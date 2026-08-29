@@ -1,94 +1,97 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-const STORAGE_KEY =
-  "personal-budget-transactions";
+const STORAGE_KEY = "budget-transactions";
 
-export function useTransactions() {
+function useTransactions() {
+  const [transactions, setTransactions] = useState(() => {
+    try {
+      const savedTransactions =
+        localStorage.getItem(STORAGE_KEY);
 
-  const [transactions, setTransactions] = useState(
-    () => {
-      try {
+      return savedTransactions
+        ? JSON.parse(savedTransactions)
+        : [];
+    } catch (error) {
+      console.error(
+        "Failed to load transactions:",
+        error
+      );
 
-        const saved =
-          localStorage.getItem(
-            STORAGE_KEY
-          );
-
-        return saved
-          ? JSON.parse(saved)
-          : [];
-
-      } catch {
-        return [];
-      }
+      return [];
     }
-  );
+  });
 
-  const saveTransactions = (updatedTransactions) => {
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(transactions)
+      );
+    } catch (error) {
+      console.error(
+        "Failed to save transactions:",
+        error
+      );
+    }
+  }, [transactions]);
 
-    setTransactions(
-      updatedTransactions
-    );
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(
-        updatedTransactions
+  const addTransaction = (transaction) => {
+    setTransactions((currentTransactions) => [
+      ...currentTransactions,
+      transaction,
+    ]);
+  };
+
+
+  const updateTransaction = (
+    updatedTransaction
+  ) => {
+    setTransactions((currentTransactions) =>
+      currentTransactions.map(
+        (transaction) =>
+          transaction.id ===
+          updatedTransaction.id
+            ? updatedTransaction
+            : transaction
       )
     );
   };
 
-  const addTransaction = (transaction) => {
-
-    const newTransaction = {
-      ...transaction,
-      id: Date.now().toString()
-    };
-
-    saveTransactions([
-      ...transactions,
-      newTransaction
-    ]);
-  };
-
-  const updateTransaction = (
-    id,
-    updatedData
-  ) => {
-
-    const updatedTransactions =
-      transactions.map(
-        (transaction) =>
-          transaction.id === id
-            ? {
-                ...transaction,
-                ...updatedData
-              }
-            : transaction
-      );
-
-    saveTransactions(
-      updatedTransactions
-    );
-  };
 
   const deleteTransaction = (id) => {
-
-    const updatedTransactions =
-      transactions.filter(
+    setTransactions((currentTransactions) =>
+      currentTransactions.filter(
         (transaction) =>
           transaction.id !== id
-      );
-
-    saveTransactions(
-      updatedTransactions
+      )
     );
   };
+
 
   return {
     transactions,
     addTransaction,
     updateTransaction,
-    deleteTransaction
+    deleteTransaction,
   };
 }
+
+
+/*
+ * Export both ways.
+ *
+ * This allows pages using:
+ *
+ * import useTransactions from "..."
+ *
+ * AND:
+ *
+ * import { useTransactions } from "..."
+ *
+ * to work correctly.
+ */
+
+export { useTransactions };
+
+export default useTransactions;

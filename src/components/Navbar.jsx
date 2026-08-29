@@ -37,13 +37,6 @@ function Navbar() {
             </Link>
 
             <Link
-              to="/budget"
-              className="nav-box"
-            >
-              Budget
-            </Link>
-
-            <Link
               to="/summary"
               className="nav-box"
             >

@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 function Navbar() {
-  const [menuOpen, setMenuOpen] =
-    useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const closeMenu = () => {
     setMenuOpen(false);
@@ -11,9 +10,9 @@ function Navbar() {
 
   return (
     <header className="app-header">
-
       <div className="header-inner">
 
+        {/* Logo */}
         <Link
           to="/"
           className="app-logo"
@@ -22,34 +21,25 @@ function Navbar() {
           Budget Tracker
         </Link>
 
-
+        {/* Hamburger */}
         <button
           type="button"
           className="hamburger-button"
           onClick={() =>
-            setMenuOpen(
-              (current) => !current
-            )
+            setMenuOpen((current) => !current)
           }
-          aria-label={
-            menuOpen
-              ? "Close navigation menu"
-              : "Open navigation menu"
-          }
+          aria-label="Toggle navigation menu"
           aria-expanded={menuOpen}
         >
-          {menuOpen ? "×" : "☰"}
+          {menuOpen ? "✕" : "☰"}
         </button>
 
-
+        {/* Navigation */}
         <nav
           className={`app-navigation ${
-            menuOpen
-              ? "menu-open"
-              : ""
+            menuOpen ? "menu-open" : ""
           }`}
         >
-
           <Link
             to="/"
             className="nav-box"
@@ -58,24 +48,29 @@ function Navbar() {
             Dashboard
           </Link>
 
+          <Link
+            to="/budget"
+            className="nav-box"
+            onClick={closeMenu}
+          >
+            Budget Allocation
+          </Link>
 
           <Link
             to="/add?type=Income"
             className="nav-box"
             onClick={closeMenu}
           >
-            Add Transaction
+            Add Income
           </Link>
 
-
           <Link
-            to="/budget"
+            to="/add?type=Expense"
             className="nav-box"
             onClick={closeMenu}
           >
-            Budget
+            Add Expense
           </Link>
-
 
           <Link
             to="/summary"
@@ -85,7 +80,6 @@ function Navbar() {
             Summary
           </Link>
 
-
           <Link
             to="/prediction"
             className="nav-box"
@@ -94,7 +88,6 @@ function Navbar() {
             Prediction
           </Link>
 
-
           <Link
             to="/calculator"
             className="nav-box"
@@ -102,11 +95,9 @@ function Navbar() {
           >
             Calculator
           </Link>
-
         </nav>
 
       </div>
-
     </header>
   );
 }

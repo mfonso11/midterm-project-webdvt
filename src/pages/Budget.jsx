@@ -26,21 +26,53 @@ const PERIODS = [
 function Budget() {
   const { transactions } = useTransactions();
 
+  /*
+    --------------------------------------------------
+    LOAD SAVED BUDGET
+    --------------------------------------------------
+  */
+
   const [budgetData, setBudgetData] = useState(() => {
     try {
       const saved =
         localStorage.getItem(STORAGE_KEY);
 
-      return saved
-        ? JSON.parse(saved)
-        : {
-            period: 4,
-            amount: "",
+      if (saved) {
+        const parsed = JSON.parse(saved);
+
+        /*
+          Older budget data may not have
+          a startDate. In that case,
+          start a new cycle today.
+        */
+
+        if (!parsed.startDate) {
+          return {
+            period: parsed.period || 4,
+            amount: parsed.amount || "",
+            startDate: new Date()
+              .toISOString()
+              .split("T")[0],
           };
+        }
+
+        return parsed;
+      }
+
+      return {
+        period: 4,
+        amount: "",
+        startDate: new Date()
+          .toISOString()
+          .split("T")[0],
+      };
     } catch {
       return {
         period: 4,
         amount: "",
+        startDate: new Date()
+          .toISOString()
+          .split("T")[0],
       };
     }
   });
@@ -51,90 +83,78 @@ function Budget() {
   const [savedMessage, setSavedMessage] =
     useState("");
 
+  /*
+    --------------------------------------------------
+    SELECTED PERIOD
+    --------------------------------------------------
+  */
+
   const selectedPeriod =
     PERIODS.find(
       (period) =>
         period.value === budgetData.period
     ) || PERIODS[2];
 
-  const saveBudget = () => {
-    const amount = Number(budgetInput);
-
-    if (!amount || amount <= 0) {
-      setSavedMessage(
-        "Please enter a budget greater than zero."
-      );
-
-      return;
-    }
-
-    const newBudgetData = {
-      period: budgetData.period,
-      amount,
-    };
-
-    setBudgetData(newBudgetData);
-
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(newBudgetData)
-    );
-
-    setSavedMessage(
-      "Budget saved successfully."
-    );
-
-    setTimeout(() => {
-      setSavedMessage("");
-    }, 2500);
-  };
-
-  const changePeriod = (period) => {
-    const newBudgetData = {
-      ...budgetData,
-      period,
-    };
-
-    setBudgetData(newBudgetData);
-
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(newBudgetData)
-    );
-  };
-
   /*
     --------------------------------------------------
-    DATE RANGE
+    START DATE
     --------------------------------------------------
   */
 
   const startDate = useMemo(() => {
-    const today = new Date();
-
-    today.setHours(0, 0, 0, 0);
-
-    const start = new Date(today);
-
-    start.setDate(
-      start.getDate() -
-        (selectedPeriod.days - 1)
+    const date = new Date(
+      `${budgetData.startDate}T00:00:00`
     );
 
-    return start;
-  }, [selectedPeriod.days]);
+    date.setHours(0, 0, 0, 0);
+
+    return date;
+  }, [budgetData.startDate]);
 
   /*
     --------------------------------------------------
-    TRANSACTIONS IN BUDGET PERIOD
+    END DATE
+    --------------------------------------------------
+  */
+
+  const endDate = useMemo(() => {
+    const date = new Date(startDate);
+
+    date.setDate(
+      date.getDate() +
+        selectedPeriod.days -
+        1
+    );
+
+    date.setHours(23, 59, 59, 999);
+
+    return date;
+  }, [
+    startDate,
+    selectedPeriod.days,
+  ]);
+
+  /*
+    --------------------------------------------------
+    CURRENT DATE
+    --------------------------------------------------
+  */
+
+  const today = useMemo(() => {
+    const date = new Date();
+
+    date.setHours(23, 59, 59, 999);
+
+    return date;
+  }, []);
+
+  /*
+    --------------------------------------------------
+    TRANSACTIONS IN CURRENT BUDGET CYCLE
     --------------------------------------------------
   */
 
   const periodTransactions = useMemo(() => {
-    const today = new Date();
-
-    today.setHours(23, 59, 59, 999);
-
     return transactions.filter(
       (transaction) => {
         if (!transaction.date) {
@@ -148,6 +168,7 @@ function Budget() {
 
         return (
           transactionDate >= startDate &&
+          transactionDate <= endDate &&
           transactionDate <= today
         );
       }
@@ -155,6 +176,8 @@ function Budget() {
   }, [
     transactions,
     startDate,
+    endDate,
+    today,
   ]);
 
   /*
@@ -199,12 +222,18 @@ function Budget() {
 
   /*
     --------------------------------------------------
-    REMAINING BUDGET
+    BUDGET
     --------------------------------------------------
   */
 
   const allocatedBudget =
     Number(budgetData.amount) || 0;
+
+  /*
+    --------------------------------------------------
+    REMAINING BUDGET
+    --------------------------------------------------
+  */
 
   const remainingBudget =
     allocatedBudget -
@@ -229,6 +258,88 @@ function Budget() {
       Math.max(expensePercentage, 0),
       100
     );
+
+  /*
+    --------------------------------------------------
+    CHECK IF CYCLE IS ACTIVE
+    --------------------------------------------------
+  */
+
+  const cycleActive =
+    today >= startDate &&
+    today <= endDate;
+
+  const cycleFinished =
+    today > endDate;
+
+  /*
+    --------------------------------------------------
+    SAVE BUDGET
+    --------------------------------------------------
+  */
+
+  const saveBudget = () => {
+    const amount = Number(budgetInput);
+
+    if (!amount || amount <= 0) {
+      setSavedMessage(
+        "Please enter a budget greater than zero."
+      );
+
+      return;
+    }
+
+    /*
+      Saving the budget starts
+      a completely new cycle.
+    */
+
+    const newStartDate =
+      new Date()
+        .toISOString()
+        .split("T")[0];
+
+    const newBudgetData = {
+      period: budgetData.period,
+      amount,
+      startDate: newStartDate,
+    };
+
+    setBudgetData(newBudgetData);
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(newBudgetData)
+    );
+
+    setSavedMessage(
+      "Budget saved. A new budget cycle has started."
+    );
+
+    setTimeout(() => {
+      setSavedMessage("");
+    }, 3000);
+  };
+
+  /*
+    --------------------------------------------------
+    CHANGE PERIOD
+    --------------------------------------------------
+  */
+
+  const changePeriod = (period) => {
+    const newBudgetData = {
+      ...budgetData,
+      period,
+    };
+
+    setBudgetData(newBudgetData);
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(newBudgetData)
+    );
+  };
 
   /*
     --------------------------------------------------
@@ -262,6 +373,12 @@ function Budget() {
       }
     );
   };
+
+  /*
+    --------------------------------------------------
+    RENDER
+    --------------------------------------------------
+  */
 
   return (
     <div className="page-container budget-page">
@@ -337,17 +454,61 @@ function Budget() {
 
         </div>
 
+
         <p className="budget-date-range">
 
-          Current period:
+          Budget cycle:
           {" "}
+
           <strong>
             {formatDate(startDate)}
             {" → "}
-            {formatDate(new Date())}
+            {formatDate(endDate)}
           </strong>
 
         </p>
+
+      </section>
+
+
+      {/* CYCLE STATUS */}
+
+      <section className="budget-card">
+
+        <div className="budget-section-header">
+
+          <div>
+
+            <h2>
+              Cycle Status
+            </h2>
+
+            <p>
+              Your current budget cycle.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        {cycleActive && (
+
+          <p className="budget-status active-status">
+            ● Budget cycle is currently active.
+          </p>
+
+        )}
+
+
+        {cycleFinished && (
+
+          <p className="budget-status finished-status">
+            ● This budget cycle has ended.
+            Save a new budget to start another cycle.
+          </p>
+
+        )}
 
       </section>
 
@@ -366,7 +527,7 @@ function Budget() {
 
             <p>
               Enter the amount you plan to spend
-              during this period.
+              during this budget period.
             </p>
 
           </div>
@@ -542,14 +703,20 @@ function Budget() {
 
 
         {remainingBudget < 0 && (
+
           <p className="budget-warning">
+
             You have exceeded your allocated budget
             by{" "}
+
             {formatCurrency(
               Math.abs(remainingBudget)
             )}
+
             .
+
           </p>
+
         )}
 
       </section>
@@ -650,13 +817,16 @@ function Budget() {
                           : "negative"
                       }
                     >
+
                       {transaction.type ===
                       "Income"
                         ? "+"
                         : "-"}
+
                       {formatCurrency(
                         transaction.amount
                       )}
+
                     </strong>
 
                   </Link>

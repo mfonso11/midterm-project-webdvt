@@ -39,11 +39,6 @@ function App() {
           />
 
           <Route
-            path="/budget"
-            element={<Budget />}
-          />
-
-          <Route
             path="/summary"
             element={<Summary />}
           />
@@ -56,6 +51,11 @@ function App() {
           <Route
             path="/calculator"
             element={<Calculator />}
+          />
+
+          <Route
+            path="/budget"
+            element={<Budget />}
           />
 
         </Routes>

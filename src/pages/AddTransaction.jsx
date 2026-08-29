@@ -1,46 +1,91 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useTransactions } from "../hooks/useTransactions";
+import { useEffect, useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+
+import useTransactions from "../hooks/useTransactions";
+
+const categories = [
+  "Food",
+  "Transportation",
+  "School",
+  "Bills",
+  "Shopping",
+  "Entertainment",
+  "Health",
+  "Salary",
+  "Allowance",
+  "Other",
+];
 
 function AddTransaction() {
   const navigate = useNavigate();
 
+  const [searchParams] =
+    useSearchParams();
+
   const { addTransaction } =
     useTransactions();
 
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [type, setType] = useState("");
-  const [date, setDate] = useState("");
+  const initialType =
+    searchParams.get("type") === "Income"
+      ? "Income"
+      : "Expense";
+
+  const [type, setType] =
+    useState(initialType);
+
+  const [title, setTitle] =
+    useState("");
+
+  const [amount, setAmount] =
+    useState("");
+
+  const [category, setCategory] =
+    useState("");
+
+  const [date, setDate] =
+    useState("");
+
   const [description, setDescription] =
     useState("");
 
-  const categories = [
-    "Food",
-    "Transportation",
-    "School",
-    "Entertainment",
-    "Shopping",
-    "Bills",
-    "Health",
-    "Salary",
-    "Allowance",
-    "Other"
-  ];
+  const [error, setError] =
+    useState("");
+
+  useEffect(() => {
+    const urlType =
+      searchParams.get("type");
+
+    if (
+      urlType === "Income" ||
+      urlType === "Expense"
+    ) {
+      setType(urlType);
+    }
+  }, [searchParams]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
     if (
-      !title ||
+      !title.trim() ||
       !amount ||
       !category ||
-      !type ||
       !date
     ) {
-      alert(
+      setError(
         "Please complete all required fields."
+      );
+
+      return;
+    }
+
+    if (Number(amount) <= 0) {
+      setError(
+        "Amount must be greater than zero."
       );
 
       return;
@@ -48,12 +93,19 @@ function AddTransaction() {
 
     const newTransaction = {
       id: Date.now().toString(),
-      title,
+
+      title: title.trim(),
+
       amount: Number(amount),
+
       category,
-      type,
+
       date,
-      description
+
+      description:
+        description.trim(),
+
+      type,
     };
 
     addTransaction(newTransaction);
@@ -62,19 +114,22 @@ function AddTransaction() {
   };
 
   return (
-    <div className="add-transaction-page">
+    <div className="page-card add-page">
 
-      <div className="page-header">
+      <div className="page-heading">
 
         <div>
+
+          <p className="page-label">
+            TRANSACTION
+          </p>
 
           <h1>
             Add Transaction
           </h1>
 
-          <p>
-            Record your income or expenses
-            to keep your budget up to date.
+          <p className="page-description">
+            Quickly record your income or expenses.
           </p>
 
         </div>
@@ -82,202 +137,193 @@ function AddTransaction() {
       </div>
 
 
-      <div className="form-container add-transaction-form">
+      <div className="transaction-type-selector">
 
-        <form
-          onSubmit={handleSubmit}
+        <button
+          type="button"
+          className={`type-choice income-choice ${
+            type === "Income"
+              ? "selected"
+              : ""
+          }`}
+          onClick={() =>
+            setType("Income")
+          }
         >
+          <strong>
+            + Income
+          </strong>
 
-          {/* TITLE */}
-
-          <div className="form-group">
-
-            <label>
-              Transaction Name *
-            </label>
-
-            <input
-              type="text"
-              value={title}
-              onChange={(event) =>
-                setTitle(
-                  event.target.value
-                )
-              }
-              placeholder="e.g. Grocery shopping"
-              required
-            />
-
-          </div>
+          <span>
+            Money you received
+          </span>
+        </button>
 
 
-          {/* AMOUNT */}
+        <button
+          type="button"
+          className={`type-choice expense-choice ${
+            type === "Expense"
+              ? "selected"
+              : ""
+          }`}
+          onClick={() =>
+            setType("Expense")
+          }
+        >
+          <strong>
+            − Expense
+          </strong>
 
-          <div className="form-group">
-
-            <label>
-              Amount *
-            </label>
-
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={amount}
-              onChange={(event) =>
-                setAmount(
-                  event.target.value
-                )
-              }
-              placeholder="Enter amount"
-              required
-            />
-
-          </div>
-
-
-          {/* CATEGORY */}
-
-          <div className="form-group">
-
-            <label>
-              Category *
-            </label>
-
-            <select
-              value={category}
-              onChange={(event) =>
-                setCategory(
-                  event.target.value
-                )
-              }
-              required
-            >
-
-              <option value="">
-                Select a category
-              </option>
-
-              {categories.map(
-                (item) => (
-                  <option
-                    key={item}
-                    value={item}
-                  >
-                    {item}
-                  </option>
-                )
-              )}
-
-            </select>
-
-          </div>
-
-
-          {/* TYPE */}
-
-          <div className="form-group">
-
-            <label>
-              Type *
-            </label>
-
-            <select
-              value={type}
-              onChange={(event) =>
-                setType(
-                  event.target.value
-                )
-              }
-              required
-            >
-
-              <option value="">
-                Select transaction type
-              </option>
-
-              <option value="Income">
-                Income
-              </option>
-
-              <option value="Expense">
-                Expense
-              </option>
-
-            </select>
-
-          </div>
-
-
-          {/* DATE */}
-
-          <div className="form-group">
-
-            <label>
-              Date *
-            </label>
-
-            <input
-              type="date"
-              value={date}
-              onChange={(event) =>
-                setDate(
-                  event.target.value
-                )
-              }
-              required
-            />
-
-          </div>
-
-
-          {/* DESCRIPTION */}
-
-          <div className="form-group">
-
-            <label>
-              Description
-            </label>
-
-            <textarea
-              value={description}
-              onChange={(event) =>
-                setDescription(
-                  event.target.value
-                )
-              }
-              placeholder="Add additional details..."
-            />
-
-          </div>
-
-
-          {/* BUTTONS */}
-
-          <div className="form-actions">
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() =>
-                navigate("/")
-              }
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              className="primary-button add-submit-button"
-            >
-              Add Transaction
-            </button>
-
-          </div>
-
-        </form>
+          <span>
+            Money you spent
+          </span>
+        </button>
 
       </div>
+
+
+      <form
+        className="transaction-form"
+        onSubmit={handleSubmit}
+      >
+
+        <div className="form-group">
+
+          <label>
+            Transaction Name *
+          </label>
+
+          <input
+            type="text"
+            placeholder="e.g. Lunch, Salary, Allowance"
+            value={title}
+            onChange={(event) =>
+              setTitle(event.target.value)
+            }
+          />
+
+        </div>
+
+
+        <div className="form-group">
+
+          <label>
+            Amount *
+          </label>
+
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            value={amount}
+            onChange={(event) =>
+              setAmount(event.target.value)
+            }
+          />
+
+        </div>
+
+
+        <div className="form-group">
+
+          <label>
+            Category *
+          </label>
+
+          <select
+            value={category}
+            onChange={(event) =>
+              setCategory(event.target.value)
+            }
+          >
+            <option value="">
+              Select a category
+            </option>
+
+            {categories.map(
+              (item) => (
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {item}
+                </option>
+              )
+            )}
+
+          </select>
+
+        </div>
+
+
+        <div className="form-group">
+
+          <label>
+            Date *
+          </label>
+
+          <input
+            type="date"
+            value={date}
+            onChange={(event) =>
+              setDate(event.target.value)
+            }
+          />
+
+        </div>
+
+
+        <div className="form-group">
+
+          <label>
+            Description
+          </label>
+
+          <textarea
+            placeholder="Optional description"
+            value={description}
+            onChange={(event) =>
+              setDescription(
+                event.target.value
+              )
+            }
+          />
+
+        </div>
+
+
+        {error && (
+          <p className="form-error">
+            {error}
+          </p>
+        )}
+
+
+        <div className="form-actions">
+
+          <Link
+            to="/"
+            className="secondary-button"
+          >
+            Cancel
+          </Link>
+
+          <button
+            type="submit"
+            className={`submit-button ${
+              type === "Income"
+                ? "submit-income"
+                : "submit-expense"
+            }`}
+          >
+            Save {type}
+          </button>
+
+        </div>
+
+      </form>
 
     </div>
   );

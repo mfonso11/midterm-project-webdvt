@@ -1,14 +1,21 @@
 import { useState } from "react";
-import { Link, Routes, Route } from "react-router-dom";
+import {
+  Link,
+  Routes,
+  Route,
+} from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
 import AddTransaction from "./pages/AddTransaction";
 import TransactionDetail from "./pages/TransactionDetail";
 import Summary from "./pages/Summary";
 import Calculator from "./pages/Calculator";
+import FinancialPrediction from "./pages/FinancialPrediction";
 
 function App() {
-  const [menuOpen, setMenuOpen] = useState(false);
+
+  const [menuOpen, setMenuOpen] =
+    useState(false);
 
   const closeMenu = () => {
     setMenuOpen(false);
@@ -17,13 +24,14 @@ function App() {
   return (
     <div className="app">
 
-      {/* ================================
-          HAMBURGER BUTTON
-      ================================= */}
+
+      {/* HAMBURGER */}
 
       <button
         className={`hamburger-button ${
-          menuOpen ? "menu-open" : ""
+          menuOpen
+            ? "menu-open"
+            : ""
         }`}
         onClick={() =>
           setMenuOpen(!menuOpen)
@@ -36,13 +44,13 @@ function App() {
       </button>
 
 
-      {/* ================================
-          NAVIGATION
-      ================================= */}
+      {/* NAVBAR */}
 
       <header
         className={`app-header ${
-          menuOpen ? "header-visible" : ""
+          menuOpen
+            ? "header-visible"
+            : ""
         }`}
       >
 
@@ -68,8 +76,8 @@ function App() {
             </Link>
 
             <Link
-              to="/add"
-              className="nav-box add-nav-box"
+              to="/add?type=Income"
+              className="nav-box"
               onClick={closeMenu}
             >
               Add Transaction
@@ -81,6 +89,14 @@ function App() {
               onClick={closeMenu}
             >
               Summary
+            </Link>
+
+            <Link
+              to="/prediction"
+              className="nav-box"
+              onClick={closeMenu}
+            >
+              Financial Prediction
             </Link>
 
             <Link
@@ -98,9 +114,7 @@ function App() {
       </header>
 
 
-      {/* ================================
-          MAIN CONTENT
-      ================================= */}
+      {/* CONTENT */}
 
       <main>
 
@@ -110,27 +124,44 @@ function App() {
 
             <Route
               path="/"
-              element={<Dashboard />}
+              element={
+                <Dashboard />
+              }
             />
 
             <Route
               path="/add"
-              element={<AddTransaction />}
+              element={
+                <AddTransaction />
+              }
             />
 
             <Route
               path="/transaction/:id"
-              element={<TransactionDetail />}
+              element={
+                <TransactionDetail />
+              }
             />
 
             <Route
               path="/summary"
-              element={<Summary />}
+              element={
+                <Summary />
+              }
+            />
+
+            <Route
+              path="/prediction"
+              element={
+                <FinancialPrediction />
+              }
             />
 
             <Route
               path="/calculator"
-              element={<Calculator />}
+              element={
+                <Calculator />
+              }
             />
 
           </Routes>

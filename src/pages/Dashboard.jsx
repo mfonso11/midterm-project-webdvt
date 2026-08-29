@@ -1,130 +1,64 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useTransactions } from "../hooks/useTransactions";
+import useTransactions from "../hooks/useTransactions";
+
+const categories = [
+  "Food",
+  "Transportation",
+  "School",
+  "Bills",
+  "Shopping",
+  "Entertainment",
+  "Health",
+  "Salary",
+  "Allowance",
+  "Other",
+];
 
 function Dashboard() {
-  const { transactions } = useTransactions();
-
-  /* =========================================
-     HIDE / SHOW FINANCIAL NUMBERS
-  ========================================= */
-
-  const [hideSavings, setHideSavings] = useState(false);
-  const [hideExpenses, setHideExpenses] = useState(false);
-
-  /* =========================================
-     TRANSACTION FILTERS
-  ========================================= */
+  const { transactions, deleteTransaction } = useTransactions();
 
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
 
-  /* =========================================
-     FINANCIAL PREDICTION INPUTS
-  ========================================= */
-
-  const [currentBudget, setCurrentBudget] = useState("");
-  const [currentSavings, setCurrentSavings] = useState("");
-  const [currentExpenses, setCurrentExpenses] = useState("");
-
-  const [period, setPeriod] = useState("1");
-
-  /* =========================================
-     TOTAL INCOME
-  ========================================= */
-
-  const totalIncome = useMemo(() => {
-    return transactions
-      .filter(
-        (transaction) =>
-          transaction.type === "Income"
-      )
+  /*
+   * PERFORMANCE OPTIMIZATION
+   *
+   * These calculations are only performed again when
+   * the transaction data actually changes.
+   */
+  const totals = useMemo(() => {
+    const income = transactions
+      .filter((transaction) => transaction.type === "Income")
       .reduce(
         (total, transaction) =>
           total + Number(transaction.amount),
         0
       );
-  }, [transactions]);
 
-  /* =========================================
-     TOTAL EXPENSES
-  ========================================= */
-
-  const totalExpenses = useMemo(() => {
-    return transactions
-      .filter(
-        (transaction) =>
-          transaction.type === "Expense"
-      )
+    const expenses = transactions
+      .filter((transaction) => transaction.type === "Expense")
       .reduce(
         (total, transaction) =>
           total + Number(transaction.amount),
         0
       );
+
+    return {
+      income,
+      expenses,
+      balance: income - expenses,
+    };
   }, [transactions]);
-
-  /* =========================================
-     TOTAL SAVINGS
-  ========================================= */
-
-  const totalSavings =
-    totalIncome - totalExpenses;
-
-  /* =========================================
-     PREDICTION VALUES
-  ========================================= */
-
-  const budgetNumber =
-    Number(currentBudget) || 0;
-
-  const expensesNumber =
-    Number(currentExpenses) || 0;
 
   /*
-    1 Week  = 1
-    2 Weeks = 2
-    1 Month = 4
-  */
-
-  const multiplier =
-    period === "1"
-      ? 1
-      : period === "2"
-        ? 2
-        : 4;
-
-  const predictedBudget =
-  budgetNumber * multiplier;
-
-const predictedExpenses =
-  expensesNumber * multiplier;
-
-const predictedSavings =
-  (budgetNumber - expensesNumber) * multiplier;
-
-  /* =========================================
-     ALL CATEGORIES
-  ========================================= */
-
-  const allCategories = [
-    "Food",
-    "Transportation",
-    "School",
-    "Entertainment",
-    "Shopping",
-    "Bills",
-    "Health",
-    "Salary",
-    "Allowance",
-    "Other"
-  ];
-
-  /* =========================================
-     FILTER TRANSACTIONS
-  ========================================= */
-
-  const filteredTransactions =
-    transactions.filter((transaction) => {
+   * FILTERED TRANSACTIONS
+   *
+   * useMemo prevents unnecessary filtering when
+   * unrelated state changes.
+   */
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((transaction) => {
       const categoryMatch =
         categoryFilter === "All" ||
         transaction.category === categoryFilter;
@@ -135,103 +69,104 @@ const predictedSavings =
 
       return categoryMatch && typeMatch;
     });
-
-  /* =========================================
-     FORMAT MONEY
-  ========================================= */
+  }, [
+    transactions,
+    categoryFilter,
+    typeFilter,
+  ]);
 
   const formatMoney = (amount) => {
-    return new Intl.NumberFormat("en-PH", {
-      style: "currency",
-      currency: "PHP"
-    }).format(amount);
+    return `₱${Number(amount).toLocaleString(
+      "en-PH",
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    )}`;
+  };
+
+  const handleDelete = (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this transaction?"
+    );
+
+    if (confirmDelete) {
+      deleteTransaction(id);
+    }
   };
 
   return (
-    <div className="dashboard">
+    <div className="page-card dashboard-page">
 
-      {/* =====================================
-          DASHBOARD HEADER
-      ====================================== */}
-
-      <div className="page-header">
+      <div className="page-heading">
         <div>
+          <p className="page-label">OVERVIEW</p>
+
           <h1>Dashboard</h1>
 
-          <p>
-            Track your savings, expenses,
-            predictions, and transactions.
+          <p className="page-description">
+            Keep track of your current finances and recent transactions.
           </p>
         </div>
       </div>
 
 
-      {/* =====================================
+      {/* =========================
           FINANCIAL OVERVIEW
-      ====================================== */}
+      ========================== */}
 
-      <section>
+      <section className="dashboard-section">
 
         <div className="financial-grid">
 
-          {/* TOTAL SAVINGS */}
-
-          <div
-            className="financial-card"
-            onClick={() =>
-              setHideSavings(!hideSavings)
-            }
-          >
-            <h3>
+          <div className="financial-card savings-card">
+            <span className="financial-label">
               Total Savings
-            </h3>
+            </span>
 
-            <div
-              className="amount"
-              style={{
-                color:
-                  totalSavings >= 0
-                    ? "green"
-                    : "red"
-              }}
-            >
-              {hideSavings
-                ? "*****"
-                : formatMoney(totalSavings)}
-            </div>
+            <h2 className="financial-value">
+              {formatMoney(totals.balance)}
+            </h2>
 
-            <small>
-              Click to hide or show
-            </small>
+            <p>
+              Income minus expenses
+            </p>
           </div>
 
 
-          {/* TOTAL EXPENSES */}
-
-          <div
-            className="financial-card"
-            onClick={() =>
-              setHideExpenses(!hideExpenses)
-            }
-          >
-            <h3>
+          <div className="financial-card expense-card">
+            <span className="financial-label">
               Total Expenses
-            </h3>
+            </span>
 
-            <div
-              className="amount"
-              style={{
-                color: "red"
-              }}
+            <h2 className="financial-value expense-text">
+              {formatMoney(totals.expenses)}
+            </h2>
+
+            <p>
+              Total money spent
+            </p>
+          </div>
+
+
+          <div className="financial-card balance-card">
+            <span className="financial-label">
+              Current Balance
+            </span>
+
+            <h2
+              className={`financial-value ${
+                totals.balance >= 0
+                  ? "positive"
+                  : "negative"
+              }`}
             >
-              {hideExpenses
-                ? "*****"
-                : formatMoney(totalExpenses)}
-            </div>
+              {formatMoney(totals.balance)}
+            </h2>
 
-            <small>
-              Click to hide or show
-            </small>
+            <p>
+              Available after expenses
+            </p>
           </div>
 
         </div>
@@ -239,23 +174,38 @@ const predictedSavings =
       </section>
 
 
-      {/* =====================================
+      {/* =========================
           TRANSACTIONS
-      ====================================== */}
+      ========================== */}
 
-      <section className="transactions-section">
+      <section className="dashboard-section">
 
-        <div className="transactions-header">
+        <div className="section-header">
 
           <div>
-            <h2>
-              Transactions
-            </h2>
+            <h2>Transactions</h2>
 
             <p>
-              Select a transaction to view
-              or edit its details.
+              View and manage your recent transactions.
             </p>
+          </div>
+
+          <div className="transaction-actions">
+
+            <Link
+              to="/add?type=Income"
+              className="action-button income-button"
+            >
+              + Add Income
+            </Link>
+
+            <Link
+              to="/add?type=Expense"
+              className="action-button expense-button"
+            >
+              − Add Expense
+            </Link>
+
           </div>
 
         </div>
@@ -263,7 +213,7 @@ const predictedSavings =
 
         {/* FILTERS */}
 
-        <div className="filters">
+        <div className="filter-container">
 
           <div className="filter-group">
 
@@ -274,25 +224,22 @@ const predictedSavings =
             <select
               value={categoryFilter}
               onChange={(event) =>
-                setCategoryFilter(
-                  event.target.value
-                )
+                setCategoryFilter(event.target.value)
               }
             >
               <option value="All">
-                All
+                All Categories
               </option>
 
-              {allCategories.map(
-                (category) => (
-                  <option
-                    key={category}
-                    value={category}
-                  >
-                    {category}
-                  </option>
-                )
-              )}
+              {categories.map((category) => (
+                <option
+                  key={category}
+                  value={category}
+                >
+                  {category}
+                </option>
+              ))}
+
             </select>
 
           </div>
@@ -307,13 +254,11 @@ const predictedSavings =
             <select
               value={typeFilter}
               onChange={(event) =>
-                setTypeFilter(
-                  event.target.value
-                )
+                setTypeFilter(event.target.value)
               }
             >
               <option value="All">
-                All
+                All Types
               </option>
 
               <option value="Income">
@@ -323,6 +268,7 @@ const predictedSavings =
               <option value="Expense">
                 Expense
               </option>
+
             </select>
 
           </div>
@@ -330,100 +276,125 @@ const predictedSavings =
         </div>
 
 
-        {/* TRANSACTION CARDS */}
+        {/* TRANSACTION LIST */}
 
         {filteredTransactions.length === 0 ? (
 
           <div className="empty-state">
 
             <h3>
-              No transactions yet
+              No transactions found
             </h3>
 
             <p>
-              Add a transaction to start
-              tracking your finances.
+              Add an income or expense to start tracking your finances.
             </p>
 
-            <Link
-              to="/add"
-              className="primary-button"
-            >
-              Add Transaction
-            </Link>
+            <div className="empty-actions">
+
+              <Link
+                to="/add?type=Income"
+                className="action-button income-button"
+              >
+                + Add Income
+              </Link>
+
+              <Link
+                to="/add?type=Expense"
+                className="action-button expense-button"
+              >
+                − Add Expense
+              </Link>
+
+            </div>
 
           </div>
 
         ) : (
 
-          <div className="transactions-grid">
+          <div className="transaction-grid">
 
             {filteredTransactions.map(
               (transaction) => (
 
-                <Link
-                  key={transaction.id}
-                  to={`/transaction/${transaction.id}`}
+                <div
                   className="transaction-card"
+                  key={transaction.id}
                 >
 
-                  <div className="transaction-top">
-
-                    <h3>
-                      {transaction.title}
-                    </h3>
-
-                    <span
-                      className={
-                        transaction.type === "Income"
-                          ? "income-label"
-                          : "expense-label"
-                      }
-                    >
-                      {transaction.type}
-                    </span>
-
-                  </div>
-
-
-                  <div
-                    className="transaction-amount"
-                    style={{
-                      color:
-                        transaction.type === "Income"
-                          ? "green"
-                          : "red"
-                    }}
+                  <Link
+                    to={`/transaction/${transaction.id}`}
+                    className="transaction-main"
                   >
-                    {transaction.type === "Income"
-                      ? "+"
-                      : "-"}
 
-                    {formatMoney(
-                      Number(transaction.amount)
+                    <div className="transaction-top">
+
+                      <h3>
+                        {transaction.title}
+                      </h3>
+
+                      <span
+                        className={`transaction-amount ${
+                          transaction.type === "Income"
+                            ? "positive"
+                            : "negative"
+                        }`}
+                      >
+                        {transaction.type === "Income"
+                          ? "+"
+                          : "-"}
+                        {formatMoney(
+                          transaction.amount
+                        )}
+                      </span>
+
+                    </div>
+
+
+                    <div className="transaction-info">
+
+                      <span>
+                        {transaction.category}
+                      </span>
+
+                      <span>
+                        {transaction.date}
+                      </span>
+
+                      <span
+                        className={
+                          transaction.type ===
+                          "Income"
+                            ? "income-badge"
+                            : "expense-badge"
+                        }
+                      >
+                        {transaction.type}
+                      </span>
+
+                    </div>
+
+
+                    {transaction.description && (
+                      <p className="transaction-description">
+                        {transaction.description}
+                      </p>
                     )}
-                  </div>
+
+                  </Link>
 
 
-                  <div className="transaction-details">
+                  <button
+                    className="delete-small-button"
+                    onClick={() =>
+                      handleDelete(transaction.id)
+                    }
+                    aria-label="Delete transaction"
+                  >
+                    Delete
+                  </button>
 
-                    <p>
-                      <strong>
-                        Category:
-                      </strong>{" "}
-                      {transaction.category}
-                    </p>
-
-                    <p>
-                      <strong>
-                        Date:
-                      </strong>{" "}
-                      {transaction.date}
-                    </p>
-
-                  </div>
-
-                </Link>
+                </div>
 
               )
             )}
@@ -431,264 +402,6 @@ const predictedSavings =
           </div>
 
         )}
-
-      </section>
-
-
-      {/* =====================================
-          FINANCIAL PREDICTION
-      ====================================== */}
-
-      <section className="prediction-section">
-
-        <div className="section-heading">
-
-          <div>
-
-            <h2>
-              Financial Prediction
-            </h2>
-
-            <p>
-              Enter your current financial
-              numbers to estimate your future
-              savings and expenses.
-            </p>
-
-          </div>
-
-        </div>
-
-
-        {/* PREDICTION INPUTS */}
-
-        <div className="prediction-input-grid">
-
-          <div className="prediction-input-card">
-
-            <label>
-              Current Budget
-            </label>
-
-            <p className="input-description">
-              Enter your budget for one week.
-            </p>
-
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={currentBudget}
-              onChange={(event) =>
-                setCurrentBudget(
-                  event.target.value
-                )
-              }
-              placeholder="Enter weekly budget"
-            />
-
-          </div>
-
-
-          <div className="prediction-input-card">
-
-            <label>
-              Current Savings
-            </label>
-
-            <p className="input-description">
-              Enter how much you have saved
-              in total as of today.
-            </p>
-
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={currentSavings}
-              onChange={(event) =>
-                setCurrentSavings(
-                  event.target.value
-                )
-              }
-              placeholder="Enter current savings"
-            />
-
-          </div>
-
-
-          <div className="prediction-input-card">
-
-            <label>
-              Current Expenses
-            </label>
-
-            <p className="input-description">
-              Enter how much you have spent
-              from your current budget.
-            </p>
-
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={currentExpenses}
-              onChange={(event) =>
-                setCurrentExpenses(
-                  event.target.value
-                )
-              }
-              placeholder="Enter current expenses"
-            />
-
-          </div>
-
-        </div>
-
-
-        {/* PREDICTION PERIOD */}
-
-        <div className="prediction-period">
-
-          <div>
-
-            <h3>
-              Prediction Period
-            </h3>
-
-            <p>
-              Choose how far you want to
-              project your current numbers.
-            </p>
-
-          </div>
-
-
-          <div className="period-buttons">
-
-            <button
-              type="button"
-              className={
-                period === "1"
-                  ? "period-button active"
-                  : "period-button"
-              }
-              onClick={() =>
-                setPeriod("1")
-              }
-            >
-              1 Week
-            </button>
-
-
-            <button
-              type="button"
-              className={
-                period === "2"
-                  ? "period-button active"
-                  : "period-button"
-              }
-              onClick={() =>
-                setPeriod("2")
-              }
-            >
-              2 Weeks
-            </button>
-
-
-            <button
-              type="button"
-              className={
-                period === "4"
-                  ? "period-button active"
-                  : "period-button"
-              }
-              onClick={() =>
-                setPeriod("4")
-              }
-            >
-              1 Month
-            </button>
-
-          </div>
-
-        </div>
-
-
-        {/* PREDICTION RESULTS */}
-
-        <div className="prediction-grid">
-
-            {/* PREDICTED BUDGET */}
-
-                <div className="prediction-card">
-
-                    <h3>
-                        Predicted Budget
-                    </h3>
-
-                    <div className="amount">
-                        {formatMoney(predictedBudget)}
-                    </div>
-
-                <p className="prediction-note">
-                    Weekly budget × {multiplier}
-                </p>
-
-        </div>
-
-
-  {/* PREDICTED SAVINGS */}
-
-  <div className="prediction-card">
-
-    <h3>
-      Predicted Savings
-    </h3>
-
-    <div
-      className="amount"
-      style={{
-        color:
-          predictedSavings >= 0
-            ? "green"
-            : "red"
-      }}
-    >
-      {formatMoney(predictedSavings)}
-    </div>
-
-    <p className="prediction-note">
-      (Budget − Expenses) × {multiplier}
-    </p>
-
-  </div>
-
-
-  {/* PREDICTED EXPENSES */}
-
-  <div className="prediction-card">
-
-    <h3>
-      Predicted Expenses
-    </h3>
-
-    <div
-      className="amount"
-      style={{
-        color: "red"
-      }}
-    >
-      {formatMoney(predictedExpenses)}
-    </div>
-
-    <p className="prediction-note">
-      Weekly expenses × {multiplier}
-    </p>
-
-  </div>
-
-</div>
 
       </section>
 

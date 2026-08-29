@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import useTransactions from "../hooks/useTransactions";
+import { useTheme } from "../context/ThemeContext";
 
-const categories = [
+const CATEGORIES = [
   "Food",
   "Transportation",
   "School",
@@ -9,74 +10,55 @@ const categories = [
   "Shopping",
   "Entertainment",
   "Health",
-  "Salary",
-  "Allowance",
   "Other",
 ];
 
 function Summary() {
-  const { transactions } =
-    useTransactions();
+  const { transactions } = useTransactions();
+  const { darkMode, toggleTheme } = useTheme();
 
-  const summary = useMemo(() => {
-    const expenses =
-      transactions.filter(
-        (transaction) =>
-          transaction.type === "Expense"
-      );
-
-    const totalExpenses =
-      expenses.reduce(
-        (total, transaction) =>
-          total +
-          Number(transaction.amount),
-        0
-      );
-
-    const categoryTotals =
-      categories.map((category) => {
-
-        const total =
-          expenses
-            .filter(
-              (transaction) =>
-                transaction.category ===
-                category
-            )
-            .reduce(
-              (sum, transaction) =>
-                sum +
-                Number(transaction.amount),
-              0
-            );
-
-        return {
-          category,
-          total,
-          percentage:
-            totalExpenses > 0
-              ? (total /
-                  totalExpenses) *
-                100
-              : 0,
-        };
-      })
-      .filter(
-        (item) => item.total > 0
-      )
-      .sort(
-        (a, b) =>
-          b.total - a.total
-      );
-
-    return {
-      totalExpenses,
-      categoryTotals,
-    };
+  const expenseTransactions = useMemo(() => {
+    return transactions.filter(
+      (transaction) =>
+        transaction.type === "Expense"
+    );
   }, [transactions]);
 
-  const formatMoney = (amount) => {
-    return `₱${Number(amount).toLocaleString(
+
+  const totalExpenses = useMemo(() => {
+    return expenseTransactions.reduce(
+      (total, transaction) =>
+        total + Number(transaction.amount),
+      0
+    );
+  }, [expenseTransactions]);
+
+
+  const categoryTotals = useMemo(() => {
+    return CATEGORIES.map((category) => {
+
+      const total = expenseTransactions
+        .filter(
+          (transaction) =>
+            transaction.category === category
+        )
+        .reduce(
+          (sum, transaction) =>
+            sum + Number(transaction.amount),
+          0
+        );
+
+      return {
+        category,
+        total,
+      };
+
+    }).filter((item) => item.total > 0);
+  }, [expenseTransactions]);
+
+
+  const formatCurrency = (value) => {
+    return `₱${Number(value).toLocaleString(
       "en-PH",
       {
         minimumFractionDigits: 2,
@@ -85,164 +67,143 @@ function Summary() {
     )}`;
   };
 
+
   return (
-    <div className="page-card summary-page">
+    <div className="page-container">
 
-      <div className="page-heading">
-
-        <p className="page-label">
-          ANALYTICS
-        </p>
-
-        <h1>
-          Spending Summary
-        </h1>
-
-        <p className="page-description">
-          See where your money is going.
-        </p>
-
+      <div className="page-header">
+        <div>
+          <h1>Summary</h1>
+          <p>
+            See where your money is being spent.
+          </p>
+        </div>
       </div>
 
 
-      {/* TOTAL */}
+      {/* Theme */}
 
-      <div className="summary-total-card">
+      <section className="theme-card">
+
+        <div>
+          <h2>Appearance</h2>
+
+          <p>
+            Switch between light and dark mode.
+          </p>
+        </div>
+
+        <button
+          className="theme-toggle"
+          onClick={toggleTheme}
+        >
+          {darkMode
+            ? "Switch to Light Mode"
+            : "Switch to Dark Mode"}
+        </button>
+
+      </section>
+
+
+      {/* Total */}
+
+      <section className="summary-total-card">
 
         <span>
           Total Expenses
         </span>
 
         <h2>
-          {formatMoney(
-            summary.totalExpenses
-          )}
+          {formatCurrency(totalExpenses)}
         </h2>
 
-      </div>
+      </section>
 
 
-      {summary.categoryTotals.length ===
-      0 ? (
+      {/* Spending Breakdown */}
 
-        <div className="empty-state">
+      <section className="dashboard-section">
 
-          <h3>
-            No spending data yet
-          </h3>
+        <div className="section-header">
+          <div>
+            <h2>Spending Breakdown</h2>
 
-          <p>
-            Add some expense transactions to see your spending breakdown.
-          </p>
-
+            <p>
+              Your expenses grouped by category.
+            </p>
+          </div>
         </div>
 
-      ) : (
 
-        <>
+        {categoryTotals.length === 0 ? (
 
-          {/* GRAPH */}
+          <div className="empty-state">
+            <h3>No expense data yet</h3>
 
-          <section className="summary-section">
+            <p>
+              Add an expense transaction to see
+              your spending breakdown.
+            </p>
+          </div>
 
-            <h2>
-              Spending Breakdown
-            </h2>
+        ) : (
 
-            <div className="spending-chart">
+          <div className="summary-list">
 
-              {summary.categoryTotals.map(
-                (item) => (
+            {categoryTotals.map((item) => {
 
-                  <div
-                    className="chart-row"
-                    key={item.category}
-                  >
+              const percentage =
+                totalExpenses > 0
+                  ? (item.total /
+                      totalExpenses) *
+                    100
+                  : 0;
 
-                    <div className="chart-label">
+              return (
+                <div
+                  className="summary-item"
+                  key={item.category}
+                >
 
-                      <span>
-                        {item.category}
-                      </span>
-
-                      <strong>
-                        {item.percentage.toFixed(
-                          1
-                        )}
-                        %
-                      </strong>
-
-                    </div>
-
-
-                    <div className="chart-track">
-
-                      <div
-                        className="chart-fill"
-                        style={{
-                          width: `${item.percentage}%`,
-                        }}
-                      />
-
-                    </div>
-
-                  </div>
-
-                )
-              )}
-
-            </div>
-
-          </section>
-
-
-          {/* CATEGORY CARDS */}
-
-          <section className="summary-section">
-
-            <h2>
-              Categories
-            </h2>
-
-            <div className="category-summary-grid">
-
-              {summary.categoryTotals.map(
-                (item) => (
-
-                  <div
-                    className="category-summary-card"
-                    key={item.category}
-                  >
+                  <div className="summary-item-header">
 
                     <span>
                       {item.category}
                     </span>
 
                     <strong>
-                      {formatMoney(
-                        item.total
-                      )}
+                      {formatCurrency(item.total)}
                     </strong>
-
-                    <small>
-                      {item.percentage.toFixed(
-                        1
-                      )}
-                      % of expenses
-                    </small>
 
                   </div>
 
-                )
-              )}
 
-            </div>
+                  <div className="progress-track">
 
-          </section>
+                    <div
+                      className="progress-bar"
+                      style={{
+                        width: `${percentage}%`,
+                      }}
+                    />
 
-        </>
+                  </div>
 
-      )}
+
+                  <span className="summary-percentage">
+                    {percentage.toFixed(1)}%
+                  </span>
+
+                </div>
+              );
+
+            })}
+
+          </div>
+
+        )}
+
+      </section>
 
     </div>
   );

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import useTransactions from "../hooks/useTransactions";
 
-const categories = [
+const CATEGORIES = [
   "Food",
   "Transportation",
   "School",
@@ -16,47 +16,45 @@ const categories = [
 ];
 
 function Dashboard() {
-  const { transactions, deleteTransaction } = useTransactions();
+  const { transactions } = useTransactions();
 
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
 
-  /*
-   * PERFORMANCE OPTIMIZATION
-   *
-   * These calculations are only performed again when
-   * the transaction data actually changes.
-   */
-  const totals = useMemo(() => {
-    const income = transactions
+  const [hiddenCards, setHiddenCards] = useState({
+    savings: false,
+    expenses: false,
+  });
+
+  const togglePrivacy = (card) => {
+    setHiddenCards((current) => ({
+      ...current,
+      [card]: !current[card],
+    }));
+  };
+
+  const totalIncome = useMemo(() => {
+    return transactions
       .filter((transaction) => transaction.type === "Income")
       .reduce(
         (total, transaction) =>
           total + Number(transaction.amount),
         0
       );
+  }, [transactions]);
 
-    const expenses = transactions
+  const totalExpenses = useMemo(() => {
+    return transactions
       .filter((transaction) => transaction.type === "Expense")
       .reduce(
         (total, transaction) =>
           total + Number(transaction.amount),
         0
       );
-
-    return {
-      income,
-      expenses,
-      balance: income - expenses,
-    };
   }, [transactions]);
 
-  /*
-   * FILTERED TRANSACTIONS
-   *
-   * useMemo prevents unnecessary filtering when
-   * unrelated state changes.
-   */
+  const totalSavings = totalIncome - totalExpenses;
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter((transaction) => {
       const categoryMatch =
@@ -69,169 +67,121 @@ function Dashboard() {
 
       return categoryMatch && typeMatch;
     });
-  }, [
-    transactions,
-    categoryFilter,
-    typeFilter,
-  ]);
+  }, [transactions, categoryFilter, typeFilter]);
 
-  const formatMoney = (amount) => {
-    return `₱${Number(amount).toLocaleString(
-      "en-PH",
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }
-    )}`;
-  };
-
-  const handleDelete = (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this transaction?"
-    );
-
-    if (confirmDelete) {
-      deleteTransaction(id);
-    }
+  const formatCurrency = (value) => {
+    return `₱${Number(value).toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   };
 
   return (
-    <div className="page-card dashboard-page">
+    <div className="page-container dashboard-page">
 
-      <div className="page-heading">
+      <div className="page-header">
         <div>
-          <p className="page-label">OVERVIEW</p>
-
           <h1>Dashboard</h1>
-
-          <p className="page-description">
-            Keep track of your current finances and recent transactions.
+          <p>
+            Keep track of your savings and expenses.
           </p>
         </div>
       </div>
 
 
-      {/* =========================
-          FINANCIAL OVERVIEW
-      ========================== */}
+      {/* Financial Overview */}
 
-      <section className="dashboard-section">
+      <section className="financial-section">
 
-        <div className="financial-grid">
+        <div
+          className="stat-card private-card"
+          onClick={() => togglePrivacy("savings")}
+          title="Click to hide or show amount"
+        >
+          <span className="stat-label">
+            Total Savings
+          </span>
 
-          <div className="financial-card savings-card">
-            <span className="financial-label">
-              Total Savings
-            </span>
+          <h2
+            className={
+              totalSavings >= 0
+                ? "positive-value"
+                : "negative-value"
+            }
+          >
+            {hiddenCards.savings
+              ? "*****"
+              : formatCurrency(totalSavings)}
+          </h2>
 
-            <h2 className="financial-value">
-              {formatMoney(totals.balance)}
-            </h2>
-
-            <p>
-              Income minus expenses
-            </p>
-          </div>
-
-
-          <div className="financial-card expense-card">
-            <span className="financial-label">
-              Total Expenses
-            </span>
-
-            <h2 className="financial-value expense-text">
-              {formatMoney(totals.expenses)}
-            </h2>
-
-            <p>
-              Total money spent
-            </p>
-          </div>
+          <p className="privacy-hint">
+            Click to hide/show
+          </p>
+        </div>
 
 
-          <div className="financial-card balance-card">
-            <span className="financial-label">
-              Current Balance
-            </span>
+        <div
+          className="stat-card private-card"
+          onClick={() => togglePrivacy("expenses")}
+          title="Click to hide or show amount"
+        >
+          <span className="stat-label">
+            Total Expenses
+          </span>
 
-            <h2
-              className={`financial-value ${
-                totals.balance >= 0
-                  ? "positive"
-                  : "negative"
-              }`}
-            >
-              {formatMoney(totals.balance)}
-            </h2>
+          <h2 className="expense-value">
+            {hiddenCards.expenses
+              ? "*****"
+              : formatCurrency(totalExpenses)}
+          </h2>
 
-            <p>
-              Available after expenses
-            </p>
-          </div>
-
+          <p className="privacy-hint">
+            Click to hide/show
+          </p>
         </div>
 
       </section>
 
 
-      {/* =========================
-          TRANSACTIONS
-      ========================== */}
+      {/* Transactions */}
 
-      <section className="dashboard-section">
+      <section className="dashboard-section transactions-section">
 
         <div className="section-header">
-
           <div>
             <h2>Transactions</h2>
-
             <p>
               View and manage your recent transactions.
             </p>
           </div>
 
-          <div className="transaction-actions">
-
-            <Link
-              to="/add?type=Income"
-              className="action-button income-button"
-            >
-              + Add Income
-            </Link>
-
-            <Link
-              to="/add?type=Expense"
-              className="action-button expense-button"
-            >
-              − Add Expense
-            </Link>
-
-          </div>
-
+          <Link
+            to="/add-transaction"
+            className="primary-button"
+          >
+            Add Transaction
+          </Link>
         </div>
 
 
-        {/* FILTERS */}
+        {/* Filters */}
 
-        <div className="filter-container">
+        <div className="filters">
 
           <div className="filter-group">
-
-            <label>
-              Category
-            </label>
+            <label>Category</label>
 
             <select
               value={categoryFilter}
-              onChange={(event) =>
-                setCategoryFilter(event.target.value)
+              onChange={(e) =>
+                setCategoryFilter(e.target.value)
               }
             >
               <option value="All">
                 All Categories
               </option>
 
-              {categories.map((category) => (
+              {CATEGORIES.map((category) => (
                 <option
                   key={category}
                   value={category}
@@ -239,22 +189,17 @@ function Dashboard() {
                   {category}
                 </option>
               ))}
-
             </select>
-
           </div>
 
 
           <div className="filter-group">
-
-            <label>
-              Type
-            </label>
+            <label>Type</label>
 
             <select
               value={typeFilter}
-              onChange={(event) =>
-                setTypeFilter(event.target.value)
+              onChange={(e) =>
+                setTypeFilter(e.target.value)
               }
             >
               <option value="All">
@@ -268,136 +213,83 @@ function Dashboard() {
               <option value="Expense">
                 Expense
               </option>
-
             </select>
-
           </div>
 
         </div>
 
 
-        {/* TRANSACTION LIST */}
+        {/* Transaction Cards */}
 
         {filteredTransactions.length === 0 ? (
-
           <div className="empty-state">
-
-            <h3>
-              No transactions found
-            </h3>
-
+            <h3>No transactions found</h3>
             <p>
-              Add an income or expense to start tracking your finances.
+              Add an income or expense to start
+              tracking your finances.
             </p>
 
-            <div className="empty-actions">
-
-              <Link
-                to="/add?type=Income"
-                className="action-button income-button"
-              >
-                + Add Income
-              </Link>
-
-              <Link
-                to="/add?type=Expense"
-                className="action-button expense-button"
-              >
-                − Add Expense
-              </Link>
-
-            </div>
-
+            <Link
+              to="/add-transaction"
+              className="secondary-button"
+            >
+              Add Your First Transaction
+            </Link>
           </div>
-
         ) : (
 
           <div className="transaction-grid">
 
-            {filteredTransactions.map(
-              (transaction) => (
+            {filteredTransactions.map((transaction) => (
 
-                <div
-                  className="transaction-card"
-                  key={transaction.id}
-                >
+              <Link
+                key={transaction.id}
+                to={`/transaction/${transaction.id}`}
+                className="transaction-card"
+              >
 
-                  <Link
-                    to={`/transaction/${transaction.id}`}
-                    className="transaction-main"
-                  >
+                <div className="transaction-card-top">
 
-                    <div className="transaction-top">
+                  <h3>
+                    {transaction.description}
+                  </h3>
 
-                      <h3>
-                        {transaction.title}
-                      </h3>
-
-                      <span
-                        className={`transaction-amount ${
-                          transaction.type === "Income"
-                            ? "positive"
-                            : "negative"
-                        }`}
-                      >
-                        {transaction.type === "Income"
-                          ? "+"
-                          : "-"}
-                        {formatMoney(
-                          transaction.amount
-                        )}
-                      </span>
-
-                    </div>
-
-
-                    <div className="transaction-info">
-
-                      <span>
-                        {transaction.category}
-                      </span>
-
-                      <span>
-                        {transaction.date}
-                      </span>
-
-                      <span
-                        className={
-                          transaction.type ===
-                          "Income"
-                            ? "income-badge"
-                            : "expense-badge"
-                        }
-                      >
-                        {transaction.type}
-                      </span>
-
-                    </div>
-
-
-                    {transaction.description && (
-                      <p className="transaction-description">
-                        {transaction.description}
-                      </p>
-                    )}
-
-                  </Link>
-
-
-                  <button
-                    className="delete-small-button"
-                    onClick={() =>
-                      handleDelete(transaction.id)
+                  <span
+                    className={
+                      transaction.type === "Income"
+                        ? "income-badge"
+                        : "expense-badge"
                     }
-                    aria-label="Delete transaction"
                   >
-                    Delete
-                  </button>
+                    {transaction.type}
+                  </span>
 
                 </div>
 
-              )
-            )}
+
+                <div className="transaction-amount">
+                  {transaction.type === "Income"
+                    ? "+"
+                    : "-"}
+                  {formatCurrency(transaction.amount)}
+                </div>
+
+
+                <div className="transaction-details">
+
+                  <span>
+                    {transaction.category}
+                  </span>
+
+                  <span>
+                    {transaction.date}
+                  </span>
+
+                </div>
+
+              </Link>
+
+            ))}
 
           </div>
 

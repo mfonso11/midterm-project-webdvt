@@ -1,8 +1,14 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 
 function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const closeMenu = () => {
+    setMenuOpen(false);
+  };
 
   return (
     <header className="app-header">
@@ -12,23 +18,41 @@ function Navbar() {
         <Link
           to="/"
           className="app-logo"
+          onClick={closeMenu}
         >
           Personal Budget Tracker
         </Link>
 
+        {/* Hamburger Button */}
+        <button
+          type="button"
+          className="hamburger-button"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle navigation menu"
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? "✕" : "☰"}
+        </button>
+
         {/* Navigation */}
-        <nav className="app-navigation">
+        <nav
+          className={`app-navigation ${
+            menuOpen ? "menu-open" : ""
+          }`}
+        >
 
           <Link
             to="/"
             className="nav-box"
+            onClick={closeMenu}
           >
             Dashboard
           </Link>
 
           <Link
             to="/add"
-            className="nav-box add-nav-box"
+            className="nav-box"
+            onClick={closeMenu}
           >
             Add Transaction
           </Link>
@@ -36,6 +60,7 @@ function Navbar() {
           <Link
             to="/summary"
             className="nav-box"
+            onClick={closeMenu}
           >
             Summary
           </Link>
@@ -43,6 +68,7 @@ function Navbar() {
           <Link
             to="/calculator"
             className="nav-box"
+            onClick={closeMenu}
           >
             Calculator
           </Link>
@@ -50,7 +76,10 @@ function Navbar() {
           <button
             type="button"
             className="nav-box theme-button"
-            onClick={toggleTheme}
+            onClick={() => {
+              toggleTheme();
+              closeMenu();
+            }}
           >
             {theme === "light"
               ? "Dark Mode"

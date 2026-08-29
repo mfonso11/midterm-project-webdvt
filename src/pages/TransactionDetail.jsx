@@ -1,34 +1,48 @@
 import {
+  useEffect,
   useState,
-  useEffect
 } from "react";
 
 import {
   useNavigate,
-  useParams
+  useParams,
 } from "react-router-dom";
 
-import { useTransactions } from "../hooks/useTransactions";
+import useTransactions from "../hooks/useTransactions";
+
+const CATEGORIES = [
+  "Food",
+  "Transportation",
+  "School",
+  "Bills",
+  "Shopping",
+  "Entertainment",
+  "Health",
+  "Salary",
+  "Allowance",
+  "Other",
+];
 
 function TransactionDetail() {
 
-  const {
-    id
-  } = useParams();
+  const { id } = useParams();
 
   const navigate = useNavigate();
 
   const {
     transactions,
     updateTransaction,
-    deleteTransaction
+    deleteTransaction,
   } = useTransactions();
+
 
   const transaction =
     transactions.find(
       (item) =>
-        item.id === id
+        String(item.id) ===
+        String(id)
     );
+
 
   const [title, setTitle] =
     useState("");
@@ -48,89 +62,127 @@ function TransactionDetail() {
   const [description, setDescription] =
     useState("");
 
+  const [error, setError] =
+    useState("");
+
+
   useEffect(() => {
 
-    if (transaction) {
-
-      setTitle(
-        transaction.title
-      );
-
-      setAmount(
-        transaction.amount
-      );
-
-      setCategory(
-        transaction.category
-      );
-
-      setType(
-        transaction.type
-      );
-
-      setDate(
-        transaction.date
-      );
-
-      setDescription(
-        transaction.description || ""
-      );
-
+    if (!transaction) {
+      return;
     }
 
+    setTitle(
+      transaction.title ||
+      transaction.description ||
+      ""
+    );
+
+    setAmount(
+      transaction.amount ?? ""
+    );
+
+    setCategory(
+      transaction.category || ""
+    );
+
+    setType(
+      transaction.type || "Expense"
+    );
+
+    setDate(
+      transaction.date || ""
+    );
+
+    setDescription(
+      transaction.description || ""
+    );
+
+    setError("");
+
   }, [transaction]);
+
 
   if (!transaction) {
 
     return (
-      <div className="empty-state">
+      <div className="page-card">
 
-        <h2>
-          Transaction not found
-        </h2>
+        <div className="empty-state">
 
-        <button
-          className="primary-button"
-          onClick={() =>
-            navigate("/")
-          }
-        >
-          Back to Dashboard
-        </button>
+          <h2>
+            Transaction not found
+          </h2>
+
+          <p>
+            This transaction may have been
+            deleted or no longer exists.
+          </p>
+
+          <button
+            className="primary-button"
+            onClick={() =>
+              navigate("/")
+            }
+          >
+            Back to Dashboard
+          </button>
+
+        </div>
 
       </div>
     );
+
   }
 
-  const handleUpdate = (
-    event
-  ) => {
+
+  const handleUpdate = (event) => {
 
     event.preventDefault();
 
+    setError("");
+
     if (
-      !title ||
+      !title.trim() ||
       !amount ||
       !category ||
       !date
     ) {
+
+      setError(
+        "Please complete all required fields."
+      );
+
       return;
     }
+
+    if (Number(amount) <= 0) {
+
+      setError(
+        "Amount must be greater than zero."
+      );
+
+      return;
+    }
+
 
     updateTransaction(
       id,
       {
-        title,
+        title: title.trim(),
         amount: Number(amount),
         category,
         type,
         date,
-        description
+        description:
+          description.trim(),
       }
     );
 
     navigate("/");
+
   };
+
 
   const handleDelete = () => {
 
@@ -146,20 +198,26 @@ function TransactionDetail() {
     deleteTransaction(id);
 
     navigate("/");
+
   };
 
-  return (
-    <div className="transaction-page">
 
-      <div className="page-header">
+  return (
+    <div className="page-card transaction-detail-page">
+
+      <div className="page-heading">
 
         <div>
+
+          <p className="page-label">
+            TRANSACTION
+          </p>
 
           <h1>
             Transaction Details
           </h1>
 
-          <p>
+          <p className="page-description">
             View and edit this transaction.
           </p>
 
@@ -167,182 +225,208 @@ function TransactionDetail() {
 
       </div>
 
-      <div className="form-container">
 
-        <form
-          onSubmit={handleUpdate}
+      <div className="transaction-type-selector">
+
+        <button
+          type="button"
+          className={`type-choice income-choice ${
+            type === "Income"
+              ? "selected"
+              : ""
+          }`}
+          onClick={() =>
+            setType("Income")
+          }
         >
 
-          <div className="form-group">
+          <strong>
+            + Income
+          </strong>
 
-            <label>
-              Title
-            </label>
+          <span>
+            Money received
+          </span>
 
-            <input
-              type="text"
-              value={title}
-              onChange={(event) =>
-                setTitle(
-                  event.target.value
-                )
-              }
-            />
+        </button>
 
-          </div>
 
-          <div className="form-group">
+        <button
+          type="button"
+          className={`type-choice expense-choice ${
+            type === "Expense"
+              ? "selected"
+              : ""
+          }`}
+          onClick={() =>
+            setType("Expense")
+          }
+        >
 
-            <label>
-              Amount
-            </label>
+          <strong>
+            − Expense
+          </strong>
 
-            <input
-              type="number"
-              value={amount}
-              onChange={(event) =>
-                setAmount(
-                  event.target.value
-                )
-              }
-              min="0"
-              step="0.01"
-            />
+          <span>
+            Money spent
+          </span>
 
-          </div>
-
-          <div className="form-group">
-
-            <label>
-              Category
-            </label>
-
-            <select
-              value={category}
-              onChange={(event) =>
-                setCategory(
-                  event.target.value
-                )
-              }
-            >
-
-              <option value="Food">
-                Food
-              </option>
-
-              <option value="Transportation">
-                Transportation
-              </option>
-
-              <option value="Bills">
-                Bills
-              </option>
-
-              <option value="Shopping">
-                Shopping
-              </option>
-
-              <option value="Entertainment">
-                Entertainment
-              </option>
-
-              <option value="Salary">
-                Salary
-              </option>
-
-              <option value="Other">
-                Other
-              </option>
-
-            </select>
-
-          </div>
-
-          <div className="form-group">
-
-            <label>
-              Type
-            </label>
-
-            <select
-              value={type}
-              onChange={(event) =>
-                setType(
-                  event.target.value
-                )
-              }
-            >
-
-              <option value="Expense">
-                Expense
-              </option>
-
-              <option value="Income">
-                Income
-              </option>
-
-            </select>
-
-          </div>
-
-          <div className="form-group">
-
-            <label>
-              Date
-            </label>
-
-            <input
-              type="date"
-              value={date}
-              onChange={(event) =>
-                setDate(
-                  event.target.value
-                )
-              }
-            />
-
-          </div>
-
-          <div className="form-group">
-
-            <label>
-              Description
-            </label>
-
-            <textarea
-              value={description}
-              onChange={(event) =>
-                setDescription(
-                  event.target.value
-                )
-              }
-              rows="4"
-            />
-
-          </div>
-
-          <div className="form-actions">
-
-            <button
-              type="button"
-              className="danger-button"
-              onClick={handleDelete}
-            >
-              Delete
-            </button>
-
-            <button
-              type="submit"
-              className="primary-button"
-            >
-              Save Changes
-            </button>
-
-          </div>
-
-        </form>
+        </button>
 
       </div>
+
+
+      <form
+        className="transaction-form"
+        onSubmit={handleUpdate}
+      >
+
+        <div className="form-group">
+
+          <label>
+            Transaction Name *
+          </label>
+
+          <input
+            type="text"
+            value={title}
+            onChange={(event) =>
+              setTitle(
+                event.target.value
+              )
+            }
+          />
+
+        </div>
+
+
+        <div className="form-group">
+
+          <label>
+            Amount *
+          </label>
+
+          <input
+            type="number"
+            value={amount}
+            onChange={(event) =>
+              setAmount(
+                event.target.value
+              )
+            }
+            min="0"
+            step="0.01"
+          />
+
+        </div>
+
+
+        <div className="form-group">
+
+          <label>
+            Category *
+          </label>
+
+          <select
+            value={category}
+            onChange={(event) =>
+              setCategory(
+                event.target.value
+              )
+            }
+          >
+
+            <option value="">
+              Select a category
+            </option>
+
+            {CATEGORIES.map(
+              (item) => (
+
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {item}
+                </option>
+
+              )
+            )}
+
+          </select>
+
+        </div>
+
+
+        <div className="form-group">
+
+          <label>
+            Date *
+          </label>
+
+          <input
+            type="date"
+            value={date}
+            onChange={(event) =>
+              setDate(
+                event.target.value
+              )
+            }
+          />
+
+        </div>
+
+
+        <div className="form-group">
+
+          <label>
+            Description
+          </label>
+
+          <textarea
+            value={description}
+            onChange={(event) =>
+              setDescription(
+                event.target.value
+              )
+            }
+            rows="4"
+          />
+
+        </div>
+
+
+        {error && (
+          <p className="form-error">
+            {error}
+          </p>
+        )}
+
+
+        <div className="form-actions">
+
+          <button
+            type="button"
+            className="danger-button"
+            onClick={handleDelete}
+          >
+            Delete
+          </button>
+
+          <button
+            type="submit"
+            className={`submit-button ${
+              type === "Income"
+                ? "submit-income"
+                : "submit-expense"
+            }`}
+          >
+            Save Changes
+          </button>
+
+        </div>
+
+      </form>
 
     </div>
   );

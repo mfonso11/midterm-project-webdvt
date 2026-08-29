@@ -22,53 +22,37 @@ const categories = [
 
 function AddTransaction() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [searchParams] =
-    useSearchParams();
+  const { addTransaction } = useTransactions();
 
-  const { addTransaction } =
-    useTransactions();
-
-  const initialType =
+  const [type, setType] = useState(
     searchParams.get("type") === "Income"
       ? "Income"
-      : "Expense";
+      : "Expense"
+  );
 
-  const [type, setType] =
-    useState(initialType);
-
-  const [title, setTitle] =
-    useState("");
-
-  const [amount, setAmount] =
-    useState("");
-
-  const [category, setCategory] =
-    useState("");
-
-  const [date, setDate] =
-    useState("");
-
-  const [description, setDescription] =
-    useState("");
-
-  const [error, setError] =
-    useState("");
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState("");
+  const [date, setDate] = useState("");
+  const [description, setDescription] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const urlType =
-      searchParams.get("type");
+    const urlType = searchParams.get("type");
 
-    if (
-      urlType === "Income" ||
-      urlType === "Expense"
-    ) {
-      setType(urlType);
+    if (urlType === "Income") {
+      setType("Income");
+    } else if (urlType === "Expense") {
+      setType("Expense");
     }
   }, [searchParams]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
+    setError("");
 
     if (
       !title.trim() ||
@@ -93,18 +77,11 @@ function AddTransaction() {
 
     const newTransaction = {
       id: Date.now().toString(),
-
       title: title.trim(),
-
       amount: Number(amount),
-
       category,
-
       date,
-
-      description:
-        description.trim(),
-
+      description: description.trim(),
       type,
     };
 
@@ -136,6 +113,7 @@ function AddTransaction() {
 
       </div>
 
+      {/* Transaction Type */}
 
       <div className="transaction-type-selector">
 
@@ -146,9 +124,7 @@ function AddTransaction() {
               ? "selected"
               : ""
           }`}
-          onClick={() =>
-            setType("Income")
-          }
+          onClick={() => setType("Income")}
         >
           <strong>
             + Income
@@ -159,7 +135,6 @@ function AddTransaction() {
           </span>
         </button>
 
-
         <button
           type="button"
           className={`type-choice expense-choice ${
@@ -167,9 +142,7 @@ function AddTransaction() {
               ? "selected"
               : ""
           }`}
-          onClick={() =>
-            setType("Expense")
-          }
+          onClick={() => setType("Expense")}
         >
           <strong>
             − Expense
@@ -182,6 +155,7 @@ function AddTransaction() {
 
       </div>
 
+      {/* Form */}
 
       <form
         className="transaction-form"
@@ -205,7 +179,6 @@ function AddTransaction() {
 
         </div>
 
-
         <div className="form-group">
 
           <label>
@@ -225,7 +198,6 @@ function AddTransaction() {
 
         </div>
 
-
         <div className="form-group">
 
           <label>
@@ -238,25 +210,23 @@ function AddTransaction() {
               setCategory(event.target.value)
             }
           >
+
             <option value="">
               Select a category
             </option>
 
-            {categories.map(
-              (item) => (
-                <option
-                  key={item}
-                  value={item}
-                >
-                  {item}
-                </option>
-              )
-            )}
+            {categories.map((item) => (
+              <option
+                key={item}
+                value={item}
+              >
+                {item}
+              </option>
+            ))}
 
           </select>
 
         </div>
-
 
         <div className="form-group">
 
@@ -274,7 +244,6 @@ function AddTransaction() {
 
         </div>
 
-
         <div className="form-group">
 
           <label>
@@ -285,14 +254,11 @@ function AddTransaction() {
             placeholder="Optional description"
             value={description}
             onChange={(event) =>
-              setDescription(
-                event.target.value
-              )
+              setDescription(event.target.value)
             }
           />
 
         </div>
-
 
         {error && (
           <p className="form-error">
@@ -300,6 +266,7 @@ function AddTransaction() {
           </p>
         )}
 
+        {/* Form Actions */}
 
         <div className="form-actions">
 

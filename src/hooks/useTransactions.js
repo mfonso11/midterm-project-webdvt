@@ -3,69 +3,115 @@ import { useEffect, useState } from "react";
 const STORAGE_KEY = "budget-transactions";
 
 function useTransactions() {
-  const [transactions, setTransactions] = useState(() => {
-    try {
-      const savedTransactions =
-        localStorage.getItem(STORAGE_KEY);
 
-      return savedTransactions
-        ? JSON.parse(savedTransactions)
-        : [];
-    } catch (error) {
-      console.error(
-        "Failed to load transactions:",
-        error
-      );
+  const [transactions, setTransactions] =
+    useState(() => {
 
-      return [];
-    }
-  });
+      try {
+
+        const savedTransactions =
+          localStorage.getItem(STORAGE_KEY);
+
+        return savedTransactions
+          ? JSON.parse(savedTransactions)
+          : [];
+
+      } catch (error) {
+
+        console.error(
+          "Failed to load transactions:",
+          error
+        );
+
+        return [];
+
+      }
+
+    });
+
 
   useEffect(() => {
+
     try {
+
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify(transactions)
       );
+
     } catch (error) {
+
       console.error(
         "Failed to save transactions:",
         error
       );
+
     }
+
   }, [transactions]);
 
 
   const addTransaction = (transaction) => {
-    setTransactions((currentTransactions) => [
-      ...currentTransactions,
-      transaction,
-    ]);
+
+    setTransactions(
+      (currentTransactions) => [
+        ...currentTransactions,
+        transaction,
+      ]
+    );
+
   };
 
 
   const updateTransaction = (
-    updatedTransaction
+    idOrTransaction,
+    updatedData
   ) => {
-    setTransactions((currentTransactions) =>
-      currentTransactions.map(
-        (transaction) =>
-          transaction.id ===
-          updatedTransaction.id
-            ? updatedTransaction
-            : transaction
-      )
+
+    setTransactions(
+      (currentTransactions) =>
+        currentTransactions.map(
+          (transaction) => {
+
+            if (
+              typeof idOrTransaction ===
+              "object"
+            ) {
+
+              return transaction.id ===
+                idOrTransaction.id
+                ? idOrTransaction
+                : transaction;
+
+            }
+
+            return String(transaction.id) ===
+              String(idOrTransaction)
+              ? {
+                  ...transaction,
+                  ...updatedData,
+                  id: transaction.id,
+                }
+              : transaction;
+
+          }
+        )
     );
+
   };
 
 
   const deleteTransaction = (id) => {
-    setTransactions((currentTransactions) =>
-      currentTransactions.filter(
-        (transaction) =>
-          transaction.id !== id
-      )
+
+    setTransactions(
+      (currentTransactions) =>
+        currentTransactions.filter(
+          (transaction) =>
+            String(transaction.id) !==
+            String(id)
+        )
     );
+
   };
 
 
@@ -75,22 +121,9 @@ function useTransactions() {
     updateTransaction,
     deleteTransaction,
   };
+
 }
 
-
-/*
- * Export both ways.
- *
- * This allows pages using:
- *
- * import useTransactions from "..."
- *
- * AND:
- *
- * import { useTransactions } from "..."
- *
- * to work correctly.
- */
 
 export { useTransactions };
 

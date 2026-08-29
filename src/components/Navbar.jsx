@@ -6,11 +6,9 @@ function Navbar() {
 
   return (
     <header className="app-header">
-
       <div className="header-inner">
 
         {/* Logo */}
-
         <Link
           to="/"
           className="app-logo"
@@ -19,7 +17,6 @@ function Navbar() {
         </Link>
 
         {/* Navigation */}
-
         <nav className="app-navigation">
 
           <Link
@@ -50,9 +47,8 @@ function Navbar() {
             Calculator
           </Link>
 
-          {/* Theme Button */}
-
           <button
+            type="button"
             className="nav-box theme-button"
             onClick={toggleTheme}
           >
@@ -64,7 +60,6 @@ function Navbar() {
         </nav>
 
       </div>
-
     </header>
   );
 }

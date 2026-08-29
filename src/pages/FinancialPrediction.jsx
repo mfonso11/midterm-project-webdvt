@@ -19,8 +19,8 @@ function FinancialPrediction() {
     period === 1
       ? 1
       : period === 2
-        ? 2
-        : 4;
+      ? 2
+      : 4;
 
 
   const prediction = useMemo(() => {
@@ -63,6 +63,7 @@ function FinancialPrediction() {
 
 
   const formatMoney = (amount) => {
+
     return `₱${Number(amount).toLocaleString(
       "en-PH",
       {
@@ -70,6 +71,7 @@ function FinancialPrediction() {
         maximumFractionDigits: 2,
       }
     )}`;
+
   };
 
 
@@ -92,8 +94,6 @@ function FinancialPrediction() {
 
       </div>
 
-
-      {/* INPUTS */}
 
       <section className="prediction-input-section">
 
@@ -190,8 +190,6 @@ function FinancialPrediction() {
       </section>
 
 
-      {/* TIMELINE */}
-
       <section className="prediction-section">
 
         <h2>
@@ -201,6 +199,7 @@ function FinancialPrediction() {
         <div className="period-buttons">
 
           <button
+            type="button"
             className={
               period === 1
                 ? "period-button active"
@@ -214,6 +213,7 @@ function FinancialPrediction() {
           </button>
 
           <button
+            type="button"
             className={
               period === 2
                 ? "period-button active"
@@ -227,6 +227,7 @@ function FinancialPrediction() {
           </button>
 
           <button
+            type="button"
             className={
               period === 4
                 ? "period-button active"
@@ -244,8 +245,6 @@ function FinancialPrediction() {
       </section>
 
 
-      {/* RESULTS */}
-
       <section className="prediction-section">
 
         <h2>
@@ -253,7 +252,6 @@ function FinancialPrediction() {
         </h2>
 
         <div className="prediction-grid">
-
 
           <div className="prediction-card">
 
@@ -282,8 +280,7 @@ function FinancialPrediction() {
 
             <strong
               className={
-                prediction.predictedSavings >=
-                0
+                prediction.predictedSavings >= 0
                   ? "positive"
                   : "negative"
               }
@@ -317,7 +314,6 @@ function FinancialPrediction() {
             </small>
 
           </div>
-
 
         </div>
 

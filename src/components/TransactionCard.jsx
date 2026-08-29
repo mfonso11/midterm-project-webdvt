@@ -6,23 +6,53 @@ function TransactionCard({ transaction }) {
       to={`/transaction/${transaction.id}`}
       className="transaction-card"
     >
-      <div>
-        <h3>{transaction.description}</h3>
-        <p>
-          {transaction.category} • {transaction.date}
-        </p>
+
+      <div className="transaction-card-top">
+
+        <h3>
+          {transaction.title || transaction.description}
+        </h3>
+
+        <span
+          className={
+            transaction.type === "Income"
+              ? "income-badge"
+              : "expense-badge"
+          }
+        >
+          {transaction.type}
+        </span>
+
       </div>
 
-      <strong
-        className={
-          transaction.type === "income"
-            ? "income"
-            : "expense"
-        }
-      >
-        {transaction.type === "income" ? "+" : "-"}₱
-        {Number(transaction.amount).toLocaleString()}
-      </strong>
+      <div className="transaction-amount">
+
+        {transaction.type === "Income"
+          ? "+"
+          : "-"}
+
+        ₱{Number(transaction.amount).toLocaleString(
+          "en-PH",
+          {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }
+        )}
+
+      </div>
+
+      <div className="transaction-details">
+
+        <span>
+          {transaction.category}
+        </span>
+
+        <span>
+          {transaction.date}
+        </span>
+
+      </div>
+
     </Link>
   );
 }

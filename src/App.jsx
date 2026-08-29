@@ -11,6 +11,7 @@ import TransactionDetail from "./pages/TransactionDetail";
 import Summary from "./pages/Summary";
 import Calculator from "./pages/Calculator";
 import FinancialPrediction from "./pages/FinancialPrediction";
+import Budget from "./pages/Budget";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
       <Navbar />
 
       <main>
+
         <Routes>
 
           <Route
@@ -37,6 +39,11 @@ function App() {
           />
 
           <Route
+            path="/budget"
+            element={<Budget />}
+          />
+
+          <Route
             path="/summary"
             element={<Summary />}
           />
@@ -52,6 +59,7 @@ function App() {
           />
 
         </Routes>
+
       </main>
 
     </div>

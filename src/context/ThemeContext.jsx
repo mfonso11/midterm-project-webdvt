@@ -8,7 +8,6 @@ import {
 const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
-
   const [theme, setTheme] = useState(() => {
     return (
       localStorage.getItem("budget-theme") ||
@@ -17,7 +16,6 @@ export function ThemeProvider({ children }) {
   });
 
   useEffect(() => {
-
     document.documentElement.setAttribute(
       "data-theme",
       theme
@@ -27,17 +25,14 @@ export function ThemeProvider({ children }) {
       "budget-theme",
       theme
     );
-
   }, [theme]);
 
   const toggleTheme = () => {
-
     setTheme((currentTheme) =>
       currentTheme === "light"
         ? "dark"
         : "light"
     );
-
   };
 
   return (

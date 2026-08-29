@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import useTransactions from "../hooks/useTransactions";
+import TransactionCard from "../components/TransactionCard";
 
 const CATEGORIES = [
   "Food",
@@ -17,7 +18,6 @@ const CATEGORIES = [
 ];
 
 function Dashboard() {
-
   const { transactions } =
     useTransactions();
 
@@ -33,19 +33,14 @@ function Dashboard() {
       expenses: false,
     });
 
-
   const togglePrivacy = (card) => {
-
     setHiddenCards((current) => ({
       ...current,
       [card]: !current[card],
     }));
-
   };
 
-
   const totalIncome = useMemo(() => {
-
     return transactions
       .filter(
         (transaction) =>
@@ -57,12 +52,9 @@ function Dashboard() {
           Number(transaction.amount),
         0
       );
-
   }, [transactions]);
 
-
   const totalExpenses = useMemo(() => {
-
     return transactions
       .filter(
         (transaction) =>
@@ -74,20 +66,15 @@ function Dashboard() {
           Number(transaction.amount),
         0
       );
-
   }, [transactions]);
-
 
   const totalSavings =
     totalIncome - totalExpenses;
 
-
   const filteredTransactions =
     useMemo(() => {
-
       return transactions.filter(
         (transaction) => {
-
           const categoryMatch =
             categoryFilter === "All" ||
             transaction.category ===
@@ -102,19 +89,15 @@ function Dashboard() {
             categoryMatch &&
             typeMatch
           );
-
         }
       );
-
     }, [
       transactions,
       categoryFilter,
       typeFilter,
     ]);
 
-
   const formatCurrency = (value) => {
-
     return `₱${Number(value).toLocaleString(
       "en-PH",
       {
@@ -122,17 +105,12 @@ function Dashboard() {
         maximumFractionDigits: 2,
       }
     )}`;
-
   };
-
 
   return (
     <div className="page-container dashboard-page">
-
       <div className="page-header">
-
         <div>
-
           <h1>
             Dashboard
           </h1>
@@ -140,14 +118,10 @@ function Dashboard() {
           <p>
             Keep track of your savings and expenses.
           </p>
-
         </div>
-
       </div>
 
-
       <section className="financial-section">
-
         <div
           className="stat-card private-card"
           onClick={() =>
@@ -155,7 +129,6 @@ function Dashboard() {
           }
           title="Click to hide or show amount"
         >
-
           <span className="stat-label">
             Total Savings
           </span>
@@ -167,21 +140,17 @@ function Dashboard() {
                 : "negative-value"
             }
           >
-
             {hiddenCards.savings
               ? "*****"
               : formatCurrency(
                   totalSavings
                 )}
-
           </h2>
 
           <p className="privacy-hint">
             Click to hide/show
           </p>
-
         </div>
-
 
         <div
           className="stat-card private-card"
@@ -190,36 +159,27 @@ function Dashboard() {
           }
           title="Click to hide or show amount"
         >
-
           <span className="stat-label">
             Total Expenses
           </span>
 
           <h2 className="expense-value">
-
             {hiddenCards.expenses
               ? "*****"
               : formatCurrency(
                   totalExpenses
                 )}
-
           </h2>
 
           <p className="privacy-hint">
             Click to hide/show
           </p>
-
         </div>
-
       </section>
 
-
       <section className="dashboard-section transactions-section">
-
         <div className="section-header">
-
           <div>
-
             <h2>
               Transactions
             </h2>
@@ -227,12 +187,9 @@ function Dashboard() {
             <p>
               View and manage your recent transactions.
             </p>
-
           </div>
 
-
           <div className="transaction-actions">
-
             <Link
               to="/add?type=Income"
               className="primary-button income-button"
@@ -246,16 +203,11 @@ function Dashboard() {
             >
               Add Expense
             </Link>
-
           </div>
-
         </div>
 
-
         <div className="filters">
-
           <div className="filter-group">
-
             <label>
               Category
             </label>
@@ -268,7 +220,6 @@ function Dashboard() {
                 )
               }
             >
-
               <option value="All">
                 All Categories
               </option>
@@ -283,14 +234,10 @@ function Dashboard() {
                   </option>
                 )
               )}
-
             </select>
-
           </div>
 
-
           <div className="filter-group">
-
             <label>
               Type
             </label>
@@ -303,7 +250,6 @@ function Dashboard() {
                 )
               }
             >
-
               <option value="All">
                 All Types
               </option>
@@ -315,18 +261,12 @@ function Dashboard() {
               <option value="Expense">
                 Expense
               </option>
-
             </select>
-
           </div>
-
         </div>
 
-
         {filteredTransactions.length === 0 ? (
-
           <div className="empty-state">
-
             <h3>
               No transactions found
             </h3>
@@ -337,7 +277,6 @@ function Dashboard() {
             </p>
 
             <div className="empty-state-actions">
-
               <Link
                 to="/add?type=Income"
                 className="secondary-button income-button"
@@ -351,82 +290,21 @@ function Dashboard() {
               >
                 Add Expense
               </Link>
-
             </div>
-
           </div>
-
         ) : (
-
           <div className="transaction-grid">
-
             {filteredTransactions.map(
               (transaction) => (
-
-                <Link
+                <TransactionCard
                   key={transaction.id}
-                  to={`/transaction/${transaction.id}`}
-                  className="transaction-card"
-                >
-
-                  <div className="transaction-card-top">
-
-                    <h3>
-                      {transaction.title ||
-                        transaction.description}
-                    </h3>
-
-                    <span
-                      className={
-                        transaction.type ===
-                        "Income"
-                          ? "income-badge"
-                          : "expense-badge"
-                      }
-                    >
-                      {transaction.type}
-                    </span>
-
-                  </div>
-
-
-                  <div className="transaction-amount">
-
-                    {transaction.type ===
-                    "Income"
-                      ? "+"
-                      : "-"}
-
-                    {formatCurrency(
-                      transaction.amount
-                    )}
-
-                  </div>
-
-
-                  <div className="transaction-details">
-
-                    <span>
-                      {transaction.category}
-                    </span>
-
-                    <span>
-                      {transaction.date}
-                    </span>
-
-                  </div>
-
-                </Link>
-
+                  transaction={transaction}
+                />
               )
             )}
-
           </div>
-
         )}
-
       </section>
-
     </div>
   );
 }

@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useTheme } from "../context/ThemeContext";
 
 function Navbar() {
-  const { theme, toggleTheme } = useTheme();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] =
+    useState(false);
 
   const closeMenu = () => {
     setMenuOpen(false);
@@ -12,32 +11,42 @@ function Navbar() {
 
   return (
     <header className="app-header">
+
       <div className="header-inner">
 
-        {/* Logo */}
         <Link
           to="/"
           className="app-logo"
           onClick={closeMenu}
         >
-          Personal Budget Tracker
+          Budget Tracker
         </Link>
 
-        {/* Hamburger Button */}
+
         <button
           type="button"
           className="hamburger-button"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle navigation menu"
+          onClick={() =>
+            setMenuOpen(
+              (current) => !current
+            )
+          }
+          aria-label={
+            menuOpen
+              ? "Close navigation menu"
+              : "Open navigation menu"
+          }
           aria-expanded={menuOpen}
         >
-          {menuOpen ? "✕" : "☰"}
+          {menuOpen ? "×" : "☰"}
         </button>
 
-        {/* Navigation */}
+
         <nav
           className={`app-navigation ${
-            menuOpen ? "menu-open" : ""
+            menuOpen
+              ? "menu-open"
+              : ""
           }`}
         >
 
@@ -49,13 +58,24 @@ function Navbar() {
             Dashboard
           </Link>
 
+
           <Link
-            to="/add"
+            to="/add?type=Income"
             className="nav-box"
             onClick={closeMenu}
           >
             Add Transaction
           </Link>
+
+
+          <Link
+            to="/budget"
+            className="nav-box"
+            onClick={closeMenu}
+          >
+            Budget
+          </Link>
+
 
           <Link
             to="/summary"
@@ -65,6 +85,16 @@ function Navbar() {
             Summary
           </Link>
 
+
+          <Link
+            to="/prediction"
+            className="nav-box"
+            onClick={closeMenu}
+          >
+            Prediction
+          </Link>
+
+
           <Link
             to="/calculator"
             className="nav-box"
@@ -73,22 +103,10 @@ function Navbar() {
             Calculator
           </Link>
 
-          <button
-            type="button"
-            className="nav-box theme-button"
-            onClick={() => {
-              toggleTheme();
-              closeMenu();
-            }}
-          >
-            {theme === "light"
-              ? "Dark Mode"
-              : "Light Mode"}
-          </button>
-
         </nav>
 
       </div>
+
     </header>
   );
 }

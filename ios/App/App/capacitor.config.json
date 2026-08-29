@@ -1,0 +1,6 @@
+{
+	"appId": "com.example.app",
+	"appName": "Budget Tracker",
+	"webDir": "dist",
+	"packageClassList": []
+}

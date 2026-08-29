@@ -1,103 +1,109 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
+import { useTheme } from "../context/ThemeContext";
 
-  const closeMenu = () => {
-    setMenuOpen(false);
-  };
+function Navbar() {
+  const { darkMode, toggleTheme } = useTheme();
+
+  const [showNavigation, setShowNavigation] =
+    useState(true);
 
   return (
     <header className="app-header">
+
       <div className="header-inner">
 
-        {/* Logo */}
+        {/* LOGO */}
+
         <Link
           to="/"
           className="app-logo"
-          onClick={closeMenu}
         >
-          Budget Tracker
+          Personal Budget Tracker
         </Link>
 
-        {/* Hamburger */}
+
+        {/* NAVIGATION */}
+
+        {showNavigation && (
+          <nav className="app-navigation">
+
+            <Link
+              to="/"
+              className="nav-box"
+            >
+              Dashboard
+            </Link>
+
+            <Link
+              to="/budget"
+              className="nav-box"
+            >
+              Budget
+            </Link>
+
+            <Link
+              to="/summary"
+              className="nav-box"
+            >
+              Summary
+            </Link>
+
+            <Link
+              to="/prediction"
+              className="nav-box"
+            >
+              Prediction
+            </Link>
+
+            <Link
+              to="/calculator"
+              className="nav-box"
+            >
+              Calculator
+            </Link>
+
+
+            {/* DARK MODE */}
+
+            <button
+              type="button"
+              className="nav-box theme-nav-button"
+              onClick={toggleTheme}
+            >
+              {darkMode
+                ? "☀ Light Mode"
+                : "🌙 Dark Mode"}
+            </button>
+
+          </nav>
+        )}
+
+
+        {/* SHOW / HIDE NAVIGATION */}
+
         <button
           type="button"
-          className="hamburger-button"
+          className="nav-toggle-button"
           onClick={() =>
-            setMenuOpen((current) => !current)
+            setShowNavigation(
+              (current) => !current
+            )
           }
-          aria-label="Toggle navigation menu"
-          aria-expanded={menuOpen}
+          aria-label={
+            showNavigation
+              ? "Hide navigation"
+              : "Show navigation"
+          }
         >
-          {menuOpen ? "✕" : "☰"}
+          {showNavigation
+            ? "Hide Menu"
+            : "Show Menu"}
         </button>
 
-        {/* Navigation */}
-        <nav
-          className={`app-navigation ${
-            menuOpen ? "menu-open" : ""
-          }`}
-        >
-          <Link
-            to="/"
-            className="nav-box"
-            onClick={closeMenu}
-          >
-            Dashboard
-          </Link>
-
-          <Link
-            to="/budget"
-            className="nav-box"
-            onClick={closeMenu}
-          >
-            Budget Allocation
-          </Link>
-
-          <Link
-            to="/add?type=Income"
-            className="nav-box"
-            onClick={closeMenu}
-          >
-            Add Income
-          </Link>
-
-          <Link
-            to="/add?type=Expense"
-            className="nav-box"
-            onClick={closeMenu}
-          >
-            Add Expense
-          </Link>
-
-          <Link
-            to="/summary"
-            className="nav-box"
-            onClick={closeMenu}
-          >
-            Summary
-          </Link>
-
-          <Link
-            to="/prediction"
-            className="nav-box"
-            onClick={closeMenu}
-          >
-            Prediction
-          </Link>
-
-          <Link
-            to="/calculator"
-            className="nav-box"
-            onClick={closeMenu}
-          >
-            Calculator
-          </Link>
-        </nav>
-
       </div>
+
     </header>
   );
 }

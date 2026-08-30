@@ -1,7 +1,4 @@
-import {
-  Routes,
-  Route,
-} from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 
@@ -9,17 +6,15 @@ import Dashboard from "./pages/Dashboard";
 import AddTransaction from "./pages/AddTransaction";
 import TransactionDetail from "./pages/TransactionDetail";
 import Summary from "./pages/Summary";
-import Calculator from "./pages/Calculator";
 import FinancialPrediction from "./pages/FinancialPrediction";
+import Calculator from "./pages/Calculator";
 
 function App() {
   return (
-    <div className="app">
-
+    <>
       <Navbar />
 
       <main>
-
         <Routes>
 
           <Route
@@ -44,7 +39,9 @@ function App() {
 
           <Route
             path="/prediction"
-            element={<FinancialPrediction />}
+            element={
+              <FinancialPrediction />
+            }
           />
 
           <Route
@@ -53,10 +50,8 @@ function App() {
           />
 
         </Routes>
-
       </main>
-
-    </div>
+    </>
   );
 }
 

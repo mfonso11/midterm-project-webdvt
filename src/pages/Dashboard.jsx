@@ -3,7 +3,17 @@ import { Link } from "react-router-dom";
 
 import useTransactions from "../hooks/useTransactions";
 
-const BUDGET_STORAGE_KEY = "daily-budget";
+const BUDGET_STORAGE_KEY =
+  "daily-budget";
+
+const DAILY_RECORDS_STORAGE_KEY =
+  "budget-daily-records";
+
+const ACTIVE_DATE_STORAGE_KEY =
+  "budget-active-date";
+
+const PRIVACY_STORAGE_KEY =
+  "budget-privacy";
 
 const PERIODS = [
   {
@@ -36,10 +46,17 @@ const CATEGORIES = [
   "Other",
 ];
 
+
+/* =====================================================
+   DATE HELPERS
+===================================================== */
+
 function getLocalDate() {
   const date = new Date();
 
-  const year = date.getFullYear();
+  const year =
+    date.getFullYear();
+
   const month = String(
     date.getMonth() + 1
   ).padStart(2, "0");
@@ -51,20 +68,119 @@ function getLocalDate() {
   return `${year}-${month}-${day}`;
 }
 
+
+function formatDate(dateString) {
+  if (!dateString) {
+    return "";
+  }
+
+  const date = new Date(
+    `${dateString}T00:00:00`
+  );
+
+  return date.toLocaleDateString(
+    "en-PH",
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }
+  );
+}
+
+
+/* =====================================================
+   STORAGE HELPERS
+===================================================== */
+
+function loadDailyRecords() {
+  try {
+    const saved =
+      localStorage.getItem(
+        DAILY_RECORDS_STORAGE_KEY
+      );
+
+    return saved
+      ? JSON.parse(saved)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+
+/* =====================================================
+   DASHBOARD
+===================================================== */
+
 function Dashboard() {
+
   const {
     transactions,
   } = useTransactions();
 
-  /*
-    --------------------------------------------------
-    BUDGET
-    --------------------------------------------------
-  */
+
+  /* ===================================================
+     CURRENT SYSTEM DATE
+  =================================================== */
+
+  const systemToday =
+    getLocalDate();
+
+
+  /* ===================================================
+     ACTIVE DATE
+
+     This allows the user to finish one day and
+     explicitly move to the next one.
+  =================================================== */
+
+  const [activeDate, setActiveDate] =
+    useState(() => {
+
+      return (
+        localStorage.getItem(
+          ACTIVE_DATE_STORAGE_KEY
+        ) ||
+        getLocalDate()
+      );
+
+    });
+
+
+  /* ===================================================
+     PRIVACY
+  =================================================== */
+
+  const [privacyMode, setPrivacyMode] =
+    useState(() => {
+
+      return (
+        localStorage.getItem(
+          PRIVACY_STORAGE_KEY
+        ) === "true"
+      );
+
+    });
+
+
+  /* ===================================================
+     DAILY RECORDS
+  =================================================== */
+
+  const [dailyRecords, setDailyRecords] =
+    useState(loadDailyRecords);
+
+
+  /* ===================================================
+     BUDGET
+  =================================================== */
 
   const [budgetData, setBudgetData] =
     useState(() => {
+
       try {
+
         const saved =
           localStorage.getItem(
             BUDGET_STORAGE_KEY
@@ -73,31 +189,32 @@ function Dashboard() {
         if (saved) {
           return JSON.parse(saved);
         }
+
       } catch {
-        // Ignore invalid saved data
+        // Ignore invalid data
       }
 
       return {
         amount: "",
         period: "week",
-        startDate: getLocalDate(),
-        appliedTransactionIds: [],
       };
+
     });
+
 
   const [budgetInput, setBudgetInput] =
     useState(
       budgetData.amount || ""
     );
 
+
   const [message, setMessage] =
     useState("");
 
-  /*
-    --------------------------------------------------
-    FILTERS
-    --------------------------------------------------
-  */
+
+  /* ===================================================
+     FILTERS
+  =================================================== */
 
   const [categoryFilter, setCategoryFilter] =
     useState("");
@@ -105,11 +222,10 @@ function Dashboard() {
   const [typeFilter, setTypeFilter] =
     useState("");
 
-  /*
-    --------------------------------------------------
-    CURRENT PERIOD
-    --------------------------------------------------
-  */
+
+  /* ===================================================
+     PERIOD
+  =================================================== */
 
   const selectedPeriod =
     PERIODS.find(
@@ -118,8 +234,12 @@ function Dashboard() {
         budgetData.period
     ) || PERIODS[0];
 
+
   const allocatedBudget =
-    Number(budgetData.amount) || 0;
+    Number(
+      budgetData.amount
+    ) || 0;
+
 
   const dailyBudget =
     selectedPeriod.days > 0
@@ -127,130 +247,116 @@ function Dashboard() {
         selectedPeriod.days
       : 0;
 
-  /*
-    --------------------------------------------------
-    TODAY
-    --------------------------------------------------
-  */
 
-  const today = getLocalDate();
+  /* ===================================================
+     ACTIVE DATE TRANSACTIONS
+  =================================================== */
 
-  const todayTransactions =
+  const activeDayTransactions =
     useMemo(() => {
+
       return transactions.filter(
         (transaction) =>
-          transaction.date === today
+          transaction.date ===
+          activeDate
       );
+
     }, [
       transactions,
-      today,
+      activeDate,
     ]);
 
-  /*
-    --------------------------------------------------
-    APPLIED TRANSACTIONS
-    --------------------------------------------------
-  */
 
-  const appliedIds =
-    budgetData.appliedTransactionIds ||
-    [];
-
-  const appliedTransactions =
-    useMemo(() => {
-      return transactions.filter(
-        (transaction) =>
-          appliedIds.includes(
-            String(transaction.id)
-          )
-      );
-    }, [
-      transactions,
-      appliedIds,
-    ]);
-
-  /*
-    --------------------------------------------------
-    TOTAL SAVINGS
-    --------------------------------------------------
-  */
-
-  const totalIncome =
-    appliedTransactions
-      .filter(
-        (transaction) =>
-          transaction.type ===
-          "Income"
-      )
-      .reduce(
-        (total, transaction) =>
-          total +
-          Number(transaction.amount || 0),
-        0
-      );
-
-  const totalExpenses =
-    appliedTransactions
-      .filter(
-        (transaction) =>
-          transaction.type ===
-          "Expense"
-      )
-      .reduce(
-        (total, transaction) =>
-          total +
-          Number(transaction.amount || 0),
-        0
-      );
-
-  const totalSavings =
-    totalIncome -
-    totalExpenses;
-
-  /*
-    --------------------------------------------------
-    TODAY'S ACTIVITY
-    --------------------------------------------------
-  */
-
-  const todayIncome =
-    todayTransactions
-      .filter(
-        (transaction) =>
-          transaction.type ===
-          "Income"
-      )
-      .reduce(
-        (total, transaction) =>
-          total +
-          Number(transaction.amount || 0),
-        0
-      );
+  /* ===================================================
+     TODAY'S EXPENSES
+  =================================================== */
 
   const todayExpenses =
-    todayTransactions
-      .filter(
-        (transaction) =>
-          transaction.type ===
-          "Expense"
-      )
-      .reduce(
-        (total, transaction) =>
-          total +
-          Number(transaction.amount || 0),
-        0
-      );
+    useMemo(() => {
+
+      return activeDayTransactions
+        .filter(
+          (transaction) =>
+            transaction.type ===
+            "Expense"
+        )
+        .reduce(
+          (total, transaction) =>
+            total +
+            Number(
+              transaction.amount || 0
+            ),
+          0
+        );
+
+    }, [
+      activeDayTransactions,
+    ]);
+
+
+  /* ===================================================
+     TODAY'S INCOME
+  =================================================== */
+
+  const todayIncome =
+    useMemo(() => {
+
+      return activeDayTransactions
+        .filter(
+          (transaction) =>
+            transaction.type ===
+            "Income"
+        )
+        .reduce(
+          (total, transaction) =>
+            total +
+            Number(
+              transaction.amount || 0
+            ),
+          0
+        );
+
+    }, [
+      activeDayTransactions,
+    ]);
+
+
+  /* ===================================================
+     TODAY'S SAVINGS
+
+     IMPORTANT:
+
+     Savings = Budget - Expenses
+
+     It is NOT equal to expenses.
+  =================================================== */
+
+  const todaySavings =
+    dailyBudget -
+    todayExpenses;
+
+
+  /* ===================================================
+     TODAY REMAINING
+  =================================================== */
 
   const remainingToday =
     dailyBudget -
     todayExpenses;
 
+
+  /* ===================================================
+     BUDGET USAGE
+  =================================================== */
+
   const todayExpensePercentage =
     dailyBudget > 0
-      ? (todayExpenses /
-          dailyBudget) *
-        100
+      ? (
+          todayExpenses /
+          dailyBudget
+        ) * 100
       : 0;
+
 
   const progressPercentage =
     Math.min(
@@ -261,208 +367,72 @@ function Dashboard() {
       100
     );
 
-  /*
-    --------------------------------------------------
-    SAVE BUDGET
-    --------------------------------------------------
-  */
 
-  const saveBudget = () => {
-    const amount =
-      Number(budgetInput);
+  /* ===================================================
+     CURRENT DAILY RECORD
+  =================================================== */
 
-    if (
-      !amount ||
-      amount <= 0
-    ) {
-      setMessage(
-        "Please enter a budget greater than zero."
-      );
-
-      return;
-    }
-
-    const newBudgetData = {
-      ...budgetData,
-      amount,
-      startDate:
-        budgetData.startDate ||
-        today,
-    };
-
-    setBudgetData(
-      newBudgetData
+  const currentDailyRecord =
+    dailyRecords.find(
+      (record) =>
+        record.date ===
+        activeDate
     );
 
-    localStorage.setItem(
-      BUDGET_STORAGE_KEY,
-      JSON.stringify(
-        newBudgetData
-      )
+
+  const dayHasBeenApplied =
+    Boolean(
+      currentDailyRecord
     );
 
-    setMessage(
-      "Budget saved successfully."
+
+  /* ===================================================
+     TOTAL SAVINGS
+
+     ONLY completed/applied days count here.
+
+     This prevents today's temporary budget from
+     automatically changing the user's total savings.
+  =================================================== */
+
+  const totalSavings =
+    dailyRecords.reduce(
+      (total, record) =>
+        total +
+        Number(
+          record.savings || 0
+        ),
+      0
     );
 
-    setTimeout(() => {
-      setMessage("");
-    }, 2500);
-  };
 
-  /*
-    --------------------------------------------------
-    CHANGE PERIOD
-    --------------------------------------------------
-  */
+  /* ===================================================
+     TOTAL EXPENSES
 
-  const changePeriod = (period) => {
-    const newBudgetData = {
-      ...budgetData,
-      period,
-      startDate: today,
-    };
+     ONLY completed/applied days count here.
+  =================================================== */
 
-    setBudgetData(
-      newBudgetData
+  const totalExpenses =
+    dailyRecords.reduce(
+      (total, record) =>
+        total +
+        Number(
+          record.expenses || 0
+        ),
+      0
     );
 
-    localStorage.setItem(
-      BUDGET_STORAGE_KEY,
-      JSON.stringify(
-        newBudgetData
-      )
-    );
-  };
 
-  /*
-    --------------------------------------------------
-    RESET BUDGET
-    --------------------------------------------------
-  */
-
-  const resetBudget = () => {
-    const confirmed =
-      window.confirm(
-        "Reset your current budget? Your transactions will not be deleted."
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    const resetData = {
-      amount: "",
-      period: "week",
-      startDate: today,
-      appliedTransactionIds: [],
-    };
-
-    setBudgetData(
-      resetData
-    );
-
-    setBudgetInput("");
-
-    localStorage.setItem(
-      BUDGET_STORAGE_KEY,
-      JSON.stringify(
-        resetData
-      )
-    );
-
-    setMessage(
-      "Budget has been reset."
-    );
-
-    setTimeout(() => {
-      setMessage("");
-    }, 2500);
-  };
-
-  /*
-    --------------------------------------------------
-    APPLY TODAY'S ACTIVITY
-    --------------------------------------------------
-  */
-
-  const applyToday = () => {
-    const unappliedToday =
-      todayTransactions.filter(
-        (transaction) =>
-          !appliedIds.includes(
-            String(transaction.id)
-          )
-      );
-
-    if (
-      unappliedToday.length === 0
-    ) {
-      setMessage(
-        "There is no new activity to apply."
-      );
-
-      return;
-    }
-
-    const newAppliedIds = [
-      ...appliedIds,
-      ...unappliedToday.map(
-        (transaction) =>
-          String(transaction.id)
-      ),
-    ];
-
-    const newBudgetData = {
-      ...budgetData,
-      appliedTransactionIds:
-        newAppliedIds,
-    };
-
-    setBudgetData(
-      newBudgetData
-    );
-
-    localStorage.setItem(
-      BUDGET_STORAGE_KEY,
-      JSON.stringify(
-        newBudgetData
-      )
-    );
-
-    setMessage(
-      "Today's activity has been added to your totals."
-    );
-
-    setTimeout(() => {
-      setMessage("");
-    }, 2500);
-  };
-
-  /*
-    --------------------------------------------------
-    UNAPPLIED TODAY
-    --------------------------------------------------
-  */
-
-  const unappliedToday =
-    todayTransactions.filter(
-      (transaction) =>
-        !appliedIds.includes(
-          String(transaction.id)
-        )
-    );
-
-  /*
-    --------------------------------------------------
-    ALL TRANSACTIONS
-    --------------------------------------------------
-  */
+  /* ===================================================
+     FILTERED TRANSACTIONS
+  =================================================== */
 
   const filteredTransactions =
     useMemo(() => {
+
       return transactions.filter(
         (transaction) => {
+
           const matchesCategory =
             !categoryFilter ||
             transaction.category ===
@@ -477,38 +447,417 @@ function Dashboard() {
             matchesCategory &&
             matchesType
           );
+
         }
       );
+
     }, [
       transactions,
       categoryFilter,
       typeFilter,
     ]);
 
-  /*
-    --------------------------------------------------
-    CURRENCY
-    --------------------------------------------------
-  */
+
+  /* ===================================================
+     CURRENCY
+  =================================================== */
 
   const formatCurrency = (
     value
   ) => {
-    return `₱${Number(
-      value || 0
-    ).toLocaleString(
-      "en-PH",
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }
-    )}`;
+
+    const number =
+      Number(value || 0);
+
+    const formatted =
+      Math.abs(number).toLocaleString(
+        "en-PH",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }
+      );
+
+    if (privacyMode) {
+      return "••••••";
+    }
+
+    return number < 0
+      ? `-₱${formatted}`
+      : `₱${formatted}`;
+
   };
+
+
+  /* ===================================================
+     PRIVACY TOGGLE
+  =================================================== */
+
+  const togglePrivacy = () => {
+
+    setPrivacyMode(
+      (current) => {
+
+        const next =
+          !current;
+
+        localStorage.setItem(
+          PRIVACY_STORAGE_KEY,
+          String(next)
+        );
+
+        return next;
+
+      }
+    );
+
+  };
+
+
+  /* ===================================================
+     SAVE BUDGET
+  =================================================== */
+
+  const saveBudget = () => {
+
+    const amount =
+      Number(budgetInput);
+
+    if (
+      !amount ||
+      amount <= 0
+    ) {
+
+      setMessage(
+        "Please enter a budget greater than zero."
+      );
+
+      return;
+    }
+
+
+    const newBudgetData = {
+      amount,
+      period:
+        budgetData.period ||
+        "week",
+    };
+
+
+    setBudgetData(
+      newBudgetData
+    );
+
+
+    localStorage.setItem(
+      BUDGET_STORAGE_KEY,
+      JSON.stringify(
+        newBudgetData
+      )
+    );
+
+
+    setMessage(
+      "Budget saved successfully."
+    );
+
+
+    setTimeout(() => {
+      setMessage("");
+    }, 2500);
+
+  };
+
+
+  /* ===================================================
+     CHANGE PERIOD
+  =================================================== */
+
+  const changePeriod = (
+    period
+  ) => {
+
+    const newBudgetData = {
+      ...budgetData,
+      period,
+    };
+
+
+    setBudgetData(
+      newBudgetData
+    );
+
+
+    localStorage.setItem(
+      BUDGET_STORAGE_KEY,
+      JSON.stringify(
+        newBudgetData
+      )
+    );
+
+  };
+
+
+  /* ===================================================
+     RESET BUDGET
+  =================================================== */
+
+  const resetBudget = () => {
+
+    const confirmed =
+      window.confirm(
+        "Reset the current budget? Your transactions and history will not be deleted."
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    const resetData = {
+      amount: "",
+      period: "week",
+    };
+
+
+    setBudgetData(
+      resetData
+    );
+
+
+    setBudgetInput("");
+
+
+    localStorage.setItem(
+      BUDGET_STORAGE_KEY,
+      JSON.stringify(
+        resetData
+      )
+    );
+
+
+    setMessage(
+      "Current budget has been reset."
+    );
+
+
+    setTimeout(() => {
+      setMessage("");
+    }, 2500);
+
+  };
+
+
+  /* ===================================================
+     APPLY TODAY'S ACTIVITY
+
+     Creates or updates the record for this date.
+  =================================================== */
+
+  const applyToday = () => {
+
+    const newRecord = {
+      date: activeDate,
+      budget: dailyBudget,
+      income: todayIncome,
+      expenses: todayExpenses,
+      savings: todaySavings,
+    };
+
+
+    const existingRecord =
+      dailyRecords.find(
+        (record) =>
+          record.date ===
+          activeDate
+      );
+
+
+    let updatedRecords;
+
+
+    if (existingRecord) {
+
+      updatedRecords =
+        dailyRecords.map(
+          (record) =>
+            record.date ===
+            activeDate
+              ? newRecord
+              : record
+        );
+
+    } else {
+
+      updatedRecords = [
+        ...dailyRecords,
+        newRecord,
+      ];
+
+    }
+
+
+    setDailyRecords(
+      updatedRecords
+    );
+
+
+    localStorage.setItem(
+      DAILY_RECORDS_STORAGE_KEY,
+      JSON.stringify(
+        updatedRecords
+      )
+    );
+
+
+    setMessage(
+      "Today's activity has been applied to your totals."
+    );
+
+
+    setTimeout(() => {
+      setMessage("");
+    }, 2500);
+
+  };
+
+
+  /* ===================================================
+     DAY OVER / NEXT DAY
+
+     Saves the current day first, then moves to the
+     actual current date.
+  =================================================== */
+
+  const finishDay = () => {
+
+    const confirmed =
+      window.confirm(
+        `Finish ${formatDate(activeDate)} and move to ${formatDate(systemToday)}?`
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    /* -----------------------------------------------
+       Save today's record automatically
+    ------------------------------------------------ */
+
+    const newRecord = {
+      date: activeDate,
+      budget: dailyBudget,
+      income: todayIncome,
+      expenses: todayExpenses,
+      savings: todaySavings,
+    };
+
+
+    const existingRecord =
+      dailyRecords.find(
+        (record) =>
+          record.date ===
+          activeDate
+      );
+
+
+    let updatedRecords;
+
+
+    if (existingRecord) {
+
+      updatedRecords =
+        dailyRecords.map(
+          (record) =>
+            record.date ===
+            activeDate
+              ? newRecord
+              : record
+        );
+
+    } else {
+
+      updatedRecords = [
+        ...dailyRecords,
+        newRecord,
+      ];
+
+    }
+
+
+    setDailyRecords(
+      updatedRecords
+    );
+
+
+    localStorage.setItem(
+      DAILY_RECORDS_STORAGE_KEY,
+      JSON.stringify(
+        updatedRecords
+      )
+    );
+
+
+    /* -----------------------------------------------
+       Move to today
+    ------------------------------------------------ */
+
+    setActiveDate(
+      systemToday
+    );
+
+
+    localStorage.setItem(
+      ACTIVE_DATE_STORAGE_KEY,
+      systemToday
+    );
+
+
+    setMessage(
+      `Day completed. Now tracking ${formatDate(
+        systemToday
+      )}.`
+    );
+
+
+    setTimeout(() => {
+      setMessage("");
+    }, 3000);
+
+  };
+
+
+  /* ===================================================
+     IF USER HAS NOT FINISHED PREVIOUS DAY
+  =================================================== */
+
+  const isPreviousDay =
+    activeDate < systemToday;
+
+
+  /* ===================================================
+     SORT HISTORY
+  =================================================== */
+
+  const sortedDailyRecords =
+    [...dailyRecords]
+      .sort(
+        (a, b) =>
+          b.date.localeCompare(
+            a.date
+          )
+      );
+
 
   return (
     <div className="page-container">
 
-      {/* PAGE HEADER */}
+      {/* =================================================
+          PAGE HEADER
+      ================================================= */}
 
       <div className="page-header">
 
@@ -524,22 +873,37 @@ function Dashboard() {
 
           <p>
             Manage your money, track your
-            daily spending, and stay within
-            your budget.
+            daily spending, and build your
+            savings over time.
           </p>
 
         </div>
+
+
+        {/* PRIVACY */}
+
+        <button
+          type="button"
+          className="privacy-button"
+          onClick={togglePrivacy}
+        >
+          {privacyMode
+            ? "👁 Show Amounts"
+            : "🔒 Hide Amounts"}
+        </button>
 
       </div>
 
 
       {/* =================================================
-          OVERALL FINANCIAL SUMMARY
+          TOTALS
       ================================================= */}
 
       <section className="financial-section">
 
-        <div className="stat-card">
+        {/* TOTAL SAVINGS */}
+
+        <div className="stat-card savings-stat-card">
 
           <span className="stat-label">
             Total Savings
@@ -558,27 +922,138 @@ function Dashboard() {
           </h2>
 
           <p className="privacy-hint">
-            Applied income minus applied expenses
+            Savings accumulated from
+            completed days.
           </p>
 
         </div>
 
 
-        <div className="stat-card">
+        {/* TOTAL EXPENSES */}
+
+        <div className="stat-card expenses-stat-card">
 
           <span className="stat-label">
             Total Expenses
           </span>
 
-          <h2 className="expense-value">
+          <h2
+            className={
+              totalExpenses >= 0
+                ? "expense-value"
+                : "negative-value"
+            }
+          >
             {formatCurrency(
               totalExpenses
             )}
           </h2>
 
           <p className="privacy-hint">
-            Expenses already added to your totals
+            Expenses from completed days.
           </p>
+
+        </div>
+
+      </section>
+
+
+      {/* =================================================
+          TODAY'S MONEY
+      ================================================= */}
+
+      <section className="today-summary-grid">
+
+        <div className="today-summary-card">
+
+          <span>
+            Today's Budget
+          </span>
+
+          <strong>
+            {formatCurrency(
+              dailyBudget
+            )}
+          </strong>
+
+          <small>
+            Available spending amount
+          </small>
+
+        </div>
+
+
+        <div className="today-summary-card">
+
+          <span>
+            Today's Expenses
+          </span>
+
+          <strong
+            className={
+              todayExpenses > 0
+                ? "negative"
+                : ""
+            }
+          >
+            {formatCurrency(
+              todayExpenses
+            )}
+          </strong>
+
+          <small>
+            Money spent today
+          </small>
+
+        </div>
+
+
+        <div className="today-summary-card">
+
+          <span>
+            Today's Savings
+          </span>
+
+          <strong
+            className={
+              todaySavings >= 0
+                ? "positive"
+                : "negative"
+            }
+          >
+            {formatCurrency(
+              todaySavings
+            )}
+          </strong>
+
+          <small>
+            Today's budget minus expenses
+          </small>
+
+        </div>
+
+
+        <div className="today-summary-card">
+
+          <span>
+            Remaining Today
+          </span>
+
+          <strong
+            className={
+              remainingToday >= 0
+                ? "positive"
+                : "negative"
+            }
+          >
+            {formatCurrency(
+              remainingToday
+            )}
+          </strong>
+
+          <small>
+            Amount remaining to spend
+          </small>
 
         </div>
 
@@ -604,12 +1079,23 @@ function Dashboard() {
             </h2>
 
             <p>
-              Set a budget for a week, two weeks,
-              or a month. Your daily allowance is
+              Set a budget for a week,
+              two weeks, or a month.
+              Your daily allowance is
               calculated automatically.
             </p>
 
+            <p className="active-date-label">
+              Currently tracking:{" "}
+              <strong>
+                {formatDate(
+                  activeDate
+                )}
+              </strong>
+            </p>
+
           </div>
+
 
           <button
             type="button"
@@ -620,6 +1106,36 @@ function Dashboard() {
           </button>
 
         </div>
+
+
+        {/* PREVIOUS DAY WARNING */}
+
+        {isPreviousDay && (
+          <div className="day-warning">
+
+            <strong>
+              A new calendar day has started.
+            </strong>
+
+            <p>
+              You are still viewing{" "}
+              {formatDate(
+                activeDate
+              )}
+              . Finish that day before
+              starting today.
+            </p>
+
+            <button
+              type="button"
+              className="primary-button"
+              onClick={finishDay}
+            >
+              Day Over / Start Today
+            </button>
+
+          </div>
+        )}
 
 
         {/* PERIOD */}
@@ -694,9 +1210,7 @@ function Dashboard() {
           <button
             type="button"
             className="submit-button submit-income"
-            onClick={
-              saveBudget
-            }
+            onClick={saveBudget}
           >
             Save Budget
           </button>
@@ -711,24 +1225,9 @@ function Dashboard() {
         )}
 
 
-        {/* BUDGET NUMBERS */}
+        {/* BUDGET STATISTICS */}
 
         <div className="budget-dashboard-stats">
-
-          <div>
-
-            <span>
-              Total Budget
-            </span>
-
-            <strong>
-              {formatCurrency(
-                allocatedBudget
-              )}
-            </strong>
-
-          </div>
-
 
           <div>
 
@@ -763,6 +1262,27 @@ function Dashboard() {
           <div>
 
             <span>
+              Today's Savings
+            </span>
+
+            <strong
+              className={
+                todaySavings >= 0
+                  ? "positive"
+                  : "negative"
+              }
+            >
+              {formatCurrency(
+                todaySavings
+              )}
+            </strong>
+
+          </div>
+
+
+          <div>
+
+            <span>
               Remaining Today
             </span>
 
@@ -783,7 +1303,7 @@ function Dashboard() {
         </div>
 
 
-        {/* TODAY PROGRESS */}
+        {/* USAGE */}
 
         <div className="budget-usage">
 
@@ -834,9 +1354,7 @@ function Dashboard() {
           </div>
 
 
-          {remainingToday <
-            0 && (
-
+          {remainingToday < 0 && (
             <p className="budget-warning">
               You have exceeded today's
               budget by{" "}
@@ -847,13 +1365,12 @@ function Dashboard() {
               )}
               .
             </p>
-
           )}
 
         </div>
 
 
-        {/* APPLY BUTTON */}
+        {/* DAY ACTIONS */}
 
         <div className="budget-apply-section">
 
@@ -864,35 +1381,173 @@ function Dashboard() {
             </strong>
 
             <p>
-              {unappliedToday.length ===
-              0
-                ? "Everything has already been applied to your totals."
-                : `${unappliedToday.length} transaction${
-                    unappliedToday.length ===
-                    1
-                      ? ""
-                      : "s"
-                  } waiting to be applied.`}
+              {dayHasBeenApplied
+                ? "Today's activity has already been applied to your totals."
+                : "Apply today's results to your overall savings and expense totals."}
             </p>
 
           </div>
 
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={
-              applyToday
-            }
-            disabled={
-              unappliedToday.length ===
-              0
-            }
-          >
-            Apply Today's Activity
-          </button>
+          <div className="day-action-buttons">
+
+            <button
+              type="button"
+              className="primary-button"
+              onClick={applyToday}
+            >
+              {dayHasBeenApplied
+                ? "Update Today's Totals"
+                : "Apply Today's Activity"}
+            </button>
+
+
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={finishDay}
+            >
+              Day Over / Next Day
+            </button>
+
+          </div>
 
         </div>
+
+      </section>
+
+
+      {/* =================================================
+          DAILY HISTORY
+      ================================================= */}
+
+      <section className="history-section">
+
+        <div className="section-header">
+
+          <div>
+
+            <h2>
+              Daily History
+            </h2>
+
+            <p>
+              Review your budget, expenses,
+              and savings from previous days.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        {sortedDailyRecords.length === 0 ? (
+
+          <div className="empty-state">
+
+            <h3>
+              No completed days yet
+            </h3>
+
+            <p>
+              Apply today's activity or
+              finish the day to create
+              your first history record.
+            </p>
+
+          </div>
+
+        ) : (
+
+          <div className="history-grid">
+
+            {sortedDailyRecords.map(
+              (record) => (
+
+                <div
+                  className="history-card"
+                  key={record.date}
+                >
+
+                  <div className="history-card-header">
+
+                    <h3>
+                      {formatDate(
+                        record.date
+                      )}
+                    </h3>
+
+                    <span>
+                      Completed
+                    </span>
+
+                  </div>
+
+
+                  <div className="history-values">
+
+                    <div>
+
+                      <span>
+                        Budget
+                      </span>
+
+                      <strong>
+                        {formatCurrency(
+                          record.budget
+                        )}
+                      </strong>
+
+                    </div>
+
+
+                    <div>
+
+                      <span>
+                        Expenses
+                      </span>
+
+                      <strong className="negative">
+                        {formatCurrency(
+                          record.expenses
+                        )}
+                      </strong>
+
+                    </div>
+
+
+                    <div>
+
+                      <span>
+                        Savings
+                      </span>
+
+                      <strong
+                        className={
+                          Number(
+                            record.savings
+                          ) >= 0
+                            ? "positive"
+                            : "negative"
+                        }
+                      >
+                        {formatCurrency(
+                          record.savings
+                        )}
+                      </strong>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              )
+            )}
+
+          </div>
+
+        )}
 
       </section>
 
@@ -919,16 +1574,12 @@ function Dashboard() {
           </div>
 
 
-          <div className="transaction-actions">
-
-            <Link
-              to="/add"
-              className="primary-button"
-            >
-              + Add Transaction
-            </Link>
-
-          </div>
+          <Link
+            to="/add"
+            className="primary-button"
+          >
+            + Add Transaction
+          </Link>
 
         </div>
 
@@ -1016,10 +1667,9 @@ function Dashboard() {
         </div>
 
 
-        {/* TRANSACTION LIST */}
+        {/* TRANSACTION CARDS */}
 
-        {filteredTransactions.length ===
-        0 ? (
+        {filteredTransactions.length === 0 ? (
 
           <div className="empty-state">
 
@@ -1050,9 +1700,7 @@ function Dashboard() {
               .slice()
               .reverse()
               .map(
-                (
-                  transaction
-                ) => (
+                (transaction) => (
 
                   <Link
                     key={

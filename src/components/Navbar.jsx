@@ -6,12 +6,12 @@ import { useTheme } from "../context/ThemeContext";
 function Navbar() {
   const { darkMode, toggleTheme } = useTheme();
 
+  // Navigation is hidden by default
   const [showNavigation, setShowNavigation] =
-    useState(true);
+    useState(false);
 
   return (
     <header className="app-header">
-
       <div className="header-inner">
 
         {/* LOGO */}
@@ -57,9 +57,6 @@ function Navbar() {
               Calculator
             </Link>
 
-
-            {/* DARK MODE */}
-
             <button
               type="button"
               className="nav-box theme-nav-button"
@@ -74,7 +71,7 @@ function Navbar() {
         )}
 
 
-        {/* SHOW / HIDE NAVIGATION */}
+        {/* SHOW / HIDE MENU */}
 
         <button
           type="button"
@@ -96,7 +93,6 @@ function Navbar() {
         </button>
 
       </div>
-
     </header>
   );
 }

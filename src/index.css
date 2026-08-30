@@ -1943,300 +1943,221 @@ main {
    DASHBOARD BUDGET TRACKER
 ===================================================== */
 
-.dashboard-budget-card {
-  margin-top: 30px;
+.budget-dashboard-card {
+  margin-bottom: 30px;
   padding: 28px;
   background: var(--card-background);
   border: 1px solid var(--border-color);
   border-radius: 16px;
 }
 
-.budget-header {
+.budget-dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
   margin-bottom: 25px;
 }
 
-.budget-header h2 {
+.budget-dashboard-header h2 {
   margin: 6px 0 8px;
   font-size: 22px;
-  font-weight: 800;
 }
 
-.budget-header p:last-child {
+.budget-dashboard-header p {
   margin: 0;
+  max-width: 700px;
   color: var(--muted-text);
   line-height: 1.5;
 }
 
 
-/* =====================================================
-   BUDGET SETUP
-===================================================== */
+/* PERIOD BUTTONS */
 
-.dashboard-budget-setup {
+.budget-period-buttons {
   display: grid;
-  grid-template-columns:
-    minmax(0, 1fr)
-    minmax(0, 1fr)
-    auto;
-  align-items: end;
-  gap: 18px;
-  padding: 20px;
-  background: var(--background-color);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.budget-period-button {
+  min-height: 46px;
   border: 1px solid var(--border-color);
-  border-radius: 14px;
+  border-radius: 10px;
+  background: var(--background-color);
+  color: var(--text-color);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
-.budget-field {
+.budget-period-button:hover {
+  transform: translateY(-1px);
+}
+
+.budget-period-button.active {
+  background: #6675e8;
+  border-color: #6675e8;
+  color: white;
+}
+
+
+/* BUDGET INPUT */
+
+.budget-input-row {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: flex-end;
+  gap: 15px;
+  margin-bottom: 18px;
 }
 
-.budget-field label {
+.budget-input-group {
+  flex: 1;
+}
+
+.budget-input-group label {
+  display: block;
+  margin-bottom: 8px;
   font-size: 13px;
   font-weight: 700;
 }
 
-.budget-field input,
-.budget-field select {
-  width: 100%;
-  min-height: 46px;
-  padding: 11px 13px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  outline: none;
-  background: var(--card-background);
-  color: var(--text-color);
-}
-
-.budget-field input:focus,
-.budget-field select:focus {
-  border-color: #7b9cff;
-  box-shadow:
-    0 0 0 3px rgba(123, 156, 255, 0.15);
-}
-
-.budget-money-input {
+.budget-input-wrapper {
   display: flex;
   align-items: center;
-  min-height: 46px;
+  overflow: hidden;
   border: 1px solid var(--border-color);
   border-radius: 10px;
   background: var(--card-background);
-  overflow: hidden;
 }
 
-.budget-money-input span {
+.budget-input-wrapper span {
   padding-left: 14px;
   font-weight: 700;
   color: var(--muted-text);
 }
 
-.budget-money-input input {
+.budget-input-wrapper input {
+  width: 100%;
+  padding: 13px 14px 13px 8px;
   border: 0;
-  box-shadow: none;
+  outline: none;
   background: transparent;
+  color: var(--text-color);
 }
 
-.budget-money-input input:focus {
-  border: 0;
-  box-shadow: none;
+.budget-input-row .submit-button {
+  min-width: 140px;
 }
 
-.budget-save-button {
-  min-height: 46px;
-  padding: 0 20px;
-  border: 0;
+
+/* RESET */
+
+.budget-reset-button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #f5cccc;
   border-radius: 10px;
-  background: #238b4e;
-  color: white;
+  background: #fff0f0;
+  color: #d32f2f;
   font-weight: 700;
   cursor: pointer;
   transition:
-    transform 0.2s ease,
-    opacity 0.2s ease;
+    background-color 0.2s ease,
+    transform 0.2s ease;
 }
 
-.budget-save-button:hover {
-  transform: translateY(-2px);
-  opacity: 0.92;
+.budget-reset-button:hover {
+  transform: translateY(-1px);
+  background: #ffe5e5;
 }
+
+
+/* MESSAGE */
 
 .budget-message {
-  margin: 15px 0 0;
+  margin: 10px 0 20px;
   padding: 11px 14px;
   border-radius: 9px;
-  background: #e9f7ee;
+  background: #eefaf2;
   color: #16803c;
   font-size: 13px;
   font-weight: 600;
 }
 
 
-/* =====================================================
-   EMPTY BUDGET
-===================================================== */
+/* BUDGET STATS */
 
-.budget-empty-state {
-  margin-top: 20px;
-  padding: 25px;
-  text-align: center;
-  border: 1px dashed var(--border-color);
-  border-radius: 12px;
-}
-
-.budget-empty-state strong {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 16px;
-}
-
-.budget-empty-state p {
-  max-width: 500px;
-  margin: 0 auto;
-  color: var(--muted-text);
-  line-height: 1.5;
-}
-
-
-/* =====================================================
-   BUDGET CYCLE
-===================================================== */
-
-.dashboard-budget-content {
-  margin-top: 22px;
-}
-
-.budget-cycle-info {
+.budget-dashboard-stats {
   display: grid;
-  grid-template-columns:
-    repeat(4, 1fr);
-  gap: 14px;
-  margin-bottom: 22px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-top: 25px;
 }
 
-.budget-cycle-info > div {
-  padding: 17px;
+.budget-dashboard-stats > div {
+  padding: 20px;
   border: 1px solid var(--border-color);
   border-radius: 12px;
   background: var(--background-color);
 }
 
-.budget-cycle-info span,
-.budget-stat span {
+.budget-dashboard-stats span {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 8px;
   color: var(--muted-text);
   font-size: 12px;
   font-weight: 600;
 }
 
-.budget-cycle-info strong {
-  display: block;
-  font-size: 14px;
-}
-
-.budget-active {
-  color: #16803c;
-}
-
-.budget-expired {
-  color: #d32f2f;
+.budget-dashboard-stats strong {
+  font-size: 20px;
 }
 
 
-/* =====================================================
-   BUDGET EXPIRED
-===================================================== */
+/* BUDGET USAGE */
 
-.budget-expired-message {
-  margin-bottom: 22px;
-  padding: 16px;
-  border-radius: 11px;
-  background: #fff0f0;
-  color: #c62828;
-}
-
-.budget-expired-message strong {
-  display: block;
-  margin-bottom: 5px;
-}
-
-.budget-expired-message p {
-  margin: 0;
-  font-size: 13px;
-}
-
-
-/* =====================================================
-   BUDGET STATS
-===================================================== */
-
-.budget-stat-grid {
-  display: grid;
-  grid-template-columns:
-    repeat(4, 1fr);
-  gap: 14px;
-}
-
-.budget-stat {
-  padding: 20px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background: var(--card-background);
-}
-
-.budget-stat strong {
-  font-size: 21px;
-}
-
-
-/* =====================================================
-   BUDGET PROGRESS
-===================================================== */
-
-.budget-progress-section {
+.budget-usage {
   margin-top: 25px;
-  padding: 20px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background: var(--background-color);
 }
 
-.budget-progress-header {
-  margin-bottom: 12px;
-}
-
-.budget-progress-header > div {
+.budget-usage-header {
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
-  align-items: center;
   gap: 15px;
+  margin-bottom: 10px;
 }
 
-.budget-progress-header strong {
-  font-size: 14px;
+.budget-usage-header div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.budget-progress-header span {
-  font-size: 14px;
-  font-weight: 800;
+.budget-usage-header span {
+  font-size: 12px;
+  color: var(--muted-text);
 }
 
 .budget-progress-track {
   width: 100%;
   height: 14px;
   overflow: hidden;
-  border-radius: 20px;
-  background: var(--card-background);
   border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background: var(--background-color);
 }
 
 .budget-progress-bar {
   height: 100%;
   min-width: 0;
-  background: #4f46e5;
   border-radius: 20px;
+  background: #4f46e5;
   transition: width 0.4s ease;
 }
 
@@ -2244,49 +2165,56 @@ main {
   background: #dc2626;
 }
 
-.budget-progress-section p {
+.budget-warning {
   margin: 10px 0 0;
-  color: var(--muted-text);
-  font-size: 12px;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 
-/* =====================================================
-   DARK MODE
-===================================================== */
+/* APPLY TODAY */
+
+.budget-apply-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 25px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border-color);
+}
+
+.budget-apply-section > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.budget-apply-section p {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 13px;
+}
+
+.budget-apply-section button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+/* DARK MODE */
+
+[data-theme="dark"] .budget-reset-button {
+  background: #422020;
+  border-color: #693737;
+  color: #ff8d8d;
+}
 
 [data-theme="dark"] .budget-message {
   background: #173b27;
   color: #75d99a;
-}
-
-[data-theme="dark"] .budget-expired-message {
-  background: #422020;
-  color: #ff8d8d;
-}
-
-
-/* =====================================================
-   BUDGET TABLET
-===================================================== */
-
-@media (max-width: 900px) {
-
-  .dashboard-budget-setup {
-    grid-template-columns:
-      1fr 1fr;
-  }
-
-  .budget-save-button {
-    width: 100%;
-  }
-
-  .budget-cycle-info,
-  .budget-stat-grid {
-    grid-template-columns:
-      repeat(2, 1fr);
-  }
-
 }
 
 
@@ -2294,24 +2222,58 @@ main {
    BUDGET MOBILE
 ===================================================== */
 
+@media (max-width: 900px) {
+
+  .budget-dashboard-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+}
+
+
 @media (max-width: 768px) {
 
-  .dashboard-budget-card {
-    padding: 20px;
+  .budget-dashboard-card {
+    padding: 22px 18px;
   }
 
-  .dashboard-budget-setup {
+  .budget-dashboard-header {
+    flex-direction: column;
+  }
+
+  .budget-reset-button {
+    width: 100%;
+  }
+
+  .budget-period-buttons {
     grid-template-columns: 1fr;
-    padding: 16px;
   }
 
-  .budget-cycle-info,
-  .budget-stat-grid {
+  .budget-input-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .budget-input-row .submit-button {
+    width: 100%;
+  }
+
+  .budget-dashboard-stats {
     grid-template-columns: 1fr;
   }
 
-  .budget-stat strong {
-    font-size: 20px;
+  .budget-usage-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .budget-apply-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .budget-apply-section button {
+    width: 100%;
   }
 
 }

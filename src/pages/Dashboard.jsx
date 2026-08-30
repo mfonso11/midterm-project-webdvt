@@ -3,6 +3,26 @@ import { Link } from "react-router-dom";
 
 import useTransactions from "../hooks/useTransactions";
 
+const BUDGET_STORAGE_KEY = "daily-budget";
+
+const PERIODS = [
+  {
+    value: "week",
+    label: "1 Week",
+    days: 7,
+  },
+  {
+    value: "two-weeks",
+    label: "2 Weeks",
+    days: 14,
+  },
+  {
+    value: "month",
+    label: "1 Month",
+    days: 30,
+  },
+];
+
 const CATEGORIES = [
   "Food",
   "Transportation",
@@ -16,129 +36,138 @@ const CATEGORIES = [
   "Other",
 ];
 
-const BUDGET_STORAGE_KEY = "dashboard-budget";
+function getLocalDate() {
+  const date = new Date();
 
-const PERIODS = [
-  {
-    value: 1,
-    label: "1 Week",
-    days: 7,
-  },
-  {
-    value: 2,
-    label: "2 Weeks",
-    days: 14,
-  },
-  {
-    value: 4,
-    label: "1 Month",
-    days: 30,
-  },
-];
+  const year = date.getFullYear();
+  const month = String(
+    date.getMonth() + 1
+  ).padStart(2, "0");
+
+  const day = String(
+    date.getDate()
+  ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
 
 function Dashboard() {
-  const { transactions } = useTransactions();
-
-  const [categoryFilter, setCategoryFilter] =
-    useState("All");
-
-  const [typeFilter, setTypeFilter] =
-    useState("All");
-
-  const [hiddenCards, setHiddenCards] =
-    useState({
-      savings: false,
-      expenses: false,
-    });
+  const {
+    transactions,
+  } = useTransactions();
 
   /*
     --------------------------------------------------
-    BUDGET STATE
+    BUDGET
     --------------------------------------------------
   */
 
-  const [budgetData, setBudgetData] = useState(() => {
-    try {
-      const saved =
-        localStorage.getItem(
-          BUDGET_STORAGE_KEY
-        );
+  const [budgetData, setBudgetData] =
+    useState(() => {
+      try {
+        const saved =
+          localStorage.getItem(
+            BUDGET_STORAGE_KEY
+          );
 
-      return saved
-        ? JSON.parse(saved)
-        : null;
-    } catch {
-      return null;
-    }
-  });
+        if (saved) {
+          return JSON.parse(saved);
+        }
+      } catch {
+        // Ignore invalid saved data
+      }
 
-  const [budgetAmount, setBudgetAmount] =
+      return {
+        amount: "",
+        period: "week",
+        startDate: getLocalDate(),
+        appliedTransactionIds: [],
+      };
+    });
+
+  const [budgetInput, setBudgetInput] =
     useState(
-      budgetData?.amount
-        ? String(budgetData.amount)
-        : ""
+      budgetData.amount || ""
     );
 
-  const [budgetPeriod, setBudgetPeriod] =
-    useState(
-      budgetData?.period || 1
-    );
-
-  const [budgetMessage, setBudgetMessage] =
+  const [message, setMessage] =
     useState("");
 
   /*
     --------------------------------------------------
-    PRIVACY
+    FILTERS
     --------------------------------------------------
   */
 
-  const togglePrivacy = (card) => {
-    setHiddenCards((current) => ({
-      ...current,
-      [card]: !current[card],
-    }));
-  };
+  const [categoryFilter, setCategoryFilter] =
+    useState("");
+
+  const [typeFilter, setTypeFilter] =
+    useState("");
 
   /*
     --------------------------------------------------
-    TOTAL INCOME
+    CURRENT PERIOD
     --------------------------------------------------
   */
 
-  const totalIncome = useMemo(() => {
-    return transactions
-      .filter(
-        (transaction) =>
-          transaction.type === "Income"
-      )
-      .reduce(
-        (total, transaction) =>
-          total +
-          Number(transaction.amount),
-        0
-      );
-  }, [transactions]);
+  const selectedPeriod =
+    PERIODS.find(
+      (period) =>
+        period.value ===
+        budgetData.period
+    ) || PERIODS[0];
+
+  const allocatedBudget =
+    Number(budgetData.amount) || 0;
+
+  const dailyBudget =
+    selectedPeriod.days > 0
+      ? allocatedBudget /
+        selectedPeriod.days
+      : 0;
 
   /*
     --------------------------------------------------
-    TOTAL EXPENSES
+    TODAY
     --------------------------------------------------
   */
 
-  const totalExpenses = useMemo(() => {
-    return transactions
-      .filter(
+  const today = getLocalDate();
+
+  const todayTransactions =
+    useMemo(() => {
+      return transactions.filter(
         (transaction) =>
-          transaction.type === "Expense"
-      )
-      .reduce(
-        (total, transaction) =>
-          total +
-          Number(transaction.amount),
-        0
+          transaction.date === today
       );
-  }, [transactions]);
+    }, [
+      transactions,
+      today,
+    ]);
+
+  /*
+    --------------------------------------------------
+    APPLIED TRANSACTIONS
+    --------------------------------------------------
+  */
+
+  const appliedIds =
+    budgetData.appliedTransactionIds ||
+    [];
+
+  const appliedTransactions =
+    useMemo(() => {
+      return transactions.filter(
+        (transaction) =>
+          appliedIds.includes(
+            String(transaction.id)
+          )
+      );
+    }, [
+      transactions,
+      appliedIds,
+    ]);
 
   /*
     --------------------------------------------------
@@ -146,167 +175,87 @@ function Dashboard() {
     --------------------------------------------------
   */
 
+  const totalIncome =
+    appliedTransactions
+      .filter(
+        (transaction) =>
+          transaction.type ===
+          "Income"
+      )
+      .reduce(
+        (total, transaction) =>
+          total +
+          Number(transaction.amount || 0),
+        0
+      );
+
+  const totalExpenses =
+    appliedTransactions
+      .filter(
+        (transaction) =>
+          transaction.type ===
+          "Expense"
+      )
+      .reduce(
+        (total, transaction) =>
+          total +
+          Number(transaction.amount || 0),
+        0
+      );
+
   const totalSavings =
-    totalIncome - totalExpenses;
+    totalIncome -
+    totalExpenses;
 
   /*
     --------------------------------------------------
-    BUDGET CYCLE
+    TODAY'S ACTIVITY
     --------------------------------------------------
   */
 
-  const budgetCycle = useMemo(() => {
-    if (!budgetData) {
-      return null;
-    }
-
-    const startDate = new Date(
-      budgetData.startDate
-    );
-
-    startDate.setHours(0, 0, 0, 0);
-
-    const endDate = new Date(startDate);
-
-    endDate.setDate(
-      endDate.getDate() +
-        budgetData.days -
-        1
-    );
-
-    endDate.setHours(
-      23,
-      59,
-      59,
-      999
-    );
-
-    const now = new Date();
-
-    return {
-      startDate,
-      endDate,
-      isActive:
-        now >= startDate &&
-        now <= endDate,
-      isExpired:
-        now > endDate,
-    };
-  }, [budgetData]);
-
-  /*
-    --------------------------------------------------
-    TRANSACTIONS INSIDE CURRENT BUDGET CYCLE
-    --------------------------------------------------
-  */
-
-  const budgetTransactions = useMemo(() => {
-    if (
-      !budgetData ||
-      !budgetCycle
-    ) {
-      return [];
-    }
-
-    return transactions.filter(
-      (transaction) => {
-        if (!transaction.date) {
-          return false;
-        }
-
-        const transactionDate =
-          new Date(
-            `${transaction.date}T00:00:00`
-          );
-
-        return (
-          transactionDate >=
-            budgetCycle.startDate &&
-          transactionDate <=
-            budgetCycle.endDate
-        );
-      }
-    );
-  }, [
-    transactions,
-    budgetData,
-    budgetCycle,
-  ]);
-
-  /*
-    --------------------------------------------------
-    BUDGET EXPENSES
-    --------------------------------------------------
-  */
-
-  const budgetExpenses = useMemo(() => {
-    return budgetTransactions
+  const todayIncome =
+    todayTransactions
       .filter(
         (transaction) =>
-          transaction.type === "Expense"
+          transaction.type ===
+          "Income"
       )
       .reduce(
         (total, transaction) =>
           total +
-          Number(transaction.amount),
+          Number(transaction.amount || 0),
         0
       );
-  }, [budgetTransactions]);
 
-  /*
-    --------------------------------------------------
-    BUDGET INCOME
-    --------------------------------------------------
-  */
-
-  const budgetIncome = useMemo(() => {
-    return budgetTransactions
+  const todayExpenses =
+    todayTransactions
       .filter(
         (transaction) =>
-          transaction.type === "Income"
+          transaction.type ===
+          "Expense"
       )
       .reduce(
         (total, transaction) =>
           total +
-          Number(transaction.amount),
+          Number(transaction.amount || 0),
         0
       );
-  }, [budgetTransactions]);
 
-  /*
-    --------------------------------------------------
-    REMAINING BUDGET
-    --------------------------------------------------
-  */
+  const remainingToday =
+    dailyBudget -
+    todayExpenses;
 
-  const allocatedBudget =
-    Number(budgetData?.amount) || 0;
-
-  const remainingBudget =
-    allocatedBudget -
-    budgetExpenses +
-    budgetIncome;
-
-  /*
-    --------------------------------------------------
-    BUDGET PERCENTAGE
-    --------------------------------------------------
-    
-    Percentage is based on actual expenses
-    against the original allocated budget.
-  */
-
-  const budgetPercentage =
-    allocatedBudget > 0
-      ? (budgetExpenses /
-          allocatedBudget) *
+  const todayExpensePercentage =
+    dailyBudget > 0
+      ? (todayExpenses /
+          dailyBudget) *
         100
       : 0;
 
   const progressPercentage =
     Math.min(
       Math.max(
-        budgetPercentage,
+        todayExpensePercentage,
         0
       ),
       100
@@ -314,92 +263,227 @@ function Dashboard() {
 
   /*
     --------------------------------------------------
-    SAVE NEW BUDGET CYCLE
+    SAVE BUDGET
     --------------------------------------------------
   */
 
   const saveBudget = () => {
     const amount =
-      Number(budgetAmount);
+      Number(budgetInput);
 
-    if (!amount || amount <= 0) {
-      setBudgetMessage(
+    if (
+      !amount ||
+      amount <= 0
+    ) {
+      setMessage(
         "Please enter a budget greater than zero."
       );
 
       return;
     }
 
-    const selectedPeriod =
-      PERIODS.find(
-        (period) =>
-          period.value ===
-          Number(budgetPeriod)
-      );
-
-    if (!selectedPeriod) {
-      return;
-    }
-
-    /*
-      The cycle starts NOW.
-      This is important because the budget
-      period now has an actual meaning.
-    */
-
-    const startDate =
-      new Date();
-
-    startDate.setHours(
-      0,
-      0,
-      0,
-      0
-    );
-
-    const newBudget = {
+    const newBudgetData = {
+      ...budgetData,
       amount,
-      period:
-        selectedPeriod.value,
-      days:
-        selectedPeriod.days,
       startDate:
-        startDate.toISOString(),
+        budgetData.startDate ||
+        today,
     };
 
     setBudgetData(
-      newBudget
+      newBudgetData
     );
 
     localStorage.setItem(
       BUDGET_STORAGE_KEY,
       JSON.stringify(
-        newBudget
+        newBudgetData
       )
     );
 
-    setBudgetMessage(
-      "Budget cycle saved successfully."
+    setMessage(
+      "Budget saved successfully."
     );
 
     setTimeout(() => {
-      setBudgetMessage("");
+      setMessage("");
     }, 2500);
   };
 
   /*
     --------------------------------------------------
-    CHANGE BUDGET PERIOD
+    CHANGE PERIOD
     --------------------------------------------------
   */
 
-  const handlePeriodChange = (
-    value
-  ) => {
-    setBudgetPeriod(
-      Number(value)
+  const changePeriod = (period) => {
+    const newBudgetData = {
+      ...budgetData,
+      period,
+      startDate: today,
+    };
+
+    setBudgetData(
+      newBudgetData
+    );
+
+    localStorage.setItem(
+      BUDGET_STORAGE_KEY,
+      JSON.stringify(
+        newBudgetData
+      )
     );
   };
+
+  /*
+    --------------------------------------------------
+    RESET BUDGET
+    --------------------------------------------------
+  */
+
+  const resetBudget = () => {
+    const confirmed =
+      window.confirm(
+        "Reset your current budget? Your transactions will not be deleted."
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const resetData = {
+      amount: "",
+      period: "week",
+      startDate: today,
+      appliedTransactionIds: [],
+    };
+
+    setBudgetData(
+      resetData
+    );
+
+    setBudgetInput("");
+
+    localStorage.setItem(
+      BUDGET_STORAGE_KEY,
+      JSON.stringify(
+        resetData
+      )
+    );
+
+    setMessage(
+      "Budget has been reset."
+    );
+
+    setTimeout(() => {
+      setMessage("");
+    }, 2500);
+  };
+
+  /*
+    --------------------------------------------------
+    APPLY TODAY'S ACTIVITY
+    --------------------------------------------------
+  */
+
+  const applyToday = () => {
+    const unappliedToday =
+      todayTransactions.filter(
+        (transaction) =>
+          !appliedIds.includes(
+            String(transaction.id)
+          )
+      );
+
+    if (
+      unappliedToday.length === 0
+    ) {
+      setMessage(
+        "There is no new activity to apply."
+      );
+
+      return;
+    }
+
+    const newAppliedIds = [
+      ...appliedIds,
+      ...unappliedToday.map(
+        (transaction) =>
+          String(transaction.id)
+      ),
+    ];
+
+    const newBudgetData = {
+      ...budgetData,
+      appliedTransactionIds:
+        newAppliedIds,
+    };
+
+    setBudgetData(
+      newBudgetData
+    );
+
+    localStorage.setItem(
+      BUDGET_STORAGE_KEY,
+      JSON.stringify(
+        newBudgetData
+      )
+    );
+
+    setMessage(
+      "Today's activity has been added to your totals."
+    );
+
+    setTimeout(() => {
+      setMessage("");
+    }, 2500);
+  };
+
+  /*
+    --------------------------------------------------
+    UNAPPLIED TODAY
+    --------------------------------------------------
+  */
+
+  const unappliedToday =
+    todayTransactions.filter(
+      (transaction) =>
+        !appliedIds.includes(
+          String(transaction.id)
+        )
+    );
+
+  /*
+    --------------------------------------------------
+    ALL TRANSACTIONS
+    --------------------------------------------------
+  */
+
+  const filteredTransactions =
+    useMemo(() => {
+      return transactions.filter(
+        (transaction) => {
+          const matchesCategory =
+            !categoryFilter ||
+            transaction.category ===
+              categoryFilter;
+
+          const matchesType =
+            !typeFilter ||
+            transaction.type ===
+              typeFilter;
+
+          return (
+            matchesCategory &&
+            matchesType
+          );
+        }
+      );
+    }, [
+      transactions,
+      categoryFilter,
+      typeFilter,
+    ]);
 
   /*
     --------------------------------------------------
@@ -411,7 +495,7 @@ function Dashboard() {
     value
   ) => {
     return `₱${Number(
-      value
+      value || 0
     ).toLocaleString(
       "en-PH",
       {
@@ -421,76 +505,27 @@ function Dashboard() {
     )}`;
   };
 
-  /*
-    --------------------------------------------------
-    DATE FORMAT
-    --------------------------------------------------
-  */
-
-  const formatDate = (
-    date
-  ) => {
-    return date.toLocaleDateString(
-      "en-PH",
-      {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }
-    );
-  };
-
-  /*
-    --------------------------------------------------
-    FILTERED TRANSACTIONS
-    --------------------------------------------------
-  */
-
-  const filteredTransactions =
-    useMemo(() => {
-      return transactions.filter(
-        (transaction) => {
-          const categoryMatch =
-            categoryFilter ===
-              "All" ||
-            transaction.category ===
-              categoryFilter;
-
-          const typeMatch =
-            typeFilter === "All" ||
-            transaction.type ===
-              typeFilter;
-
-          return (
-            categoryMatch &&
-            typeMatch
-          );
-        }
-      );
-    }, [
-      transactions,
-      categoryFilter,
-      typeFilter,
-    ]);
-
   return (
-    <div className="page-container dashboard-page">
+    <div className="page-container">
 
-      {/* ==================================================
-          PAGE HEADER
-      ================================================== */}
+      {/* PAGE HEADER */}
 
       <div className="page-header">
 
         <div>
 
+          <p className="page-label">
+            DASHBOARD
+          </p>
+
           <h1>
-            Dashboard
+            Personal Budget Tracker
           </h1>
 
           <p>
-            Keep track of your savings,
-            expenses, and budget.
+            Manage your money, track your
+            daily spending, and stay within
+            your budget.
           </p>
 
         </div>
@@ -498,21 +533,13 @@ function Dashboard() {
       </div>
 
 
-      {/* ==================================================
-          FINANCIAL SUMMARY
-      ================================================== */}
+      {/* =================================================
+          OVERALL FINANCIAL SUMMARY
+      ================================================= */}
 
       <section className="financial-section">
 
-        <div
-          className="stat-card private-card"
-          onClick={() =>
-            togglePrivacy(
-              "savings"
-            )
-          }
-          title="Click to hide or show amount"
-        >
+        <div className="stat-card">
 
           <span className="stat-label">
             Total Savings
@@ -525,44 +552,32 @@ function Dashboard() {
                 : "negative-value"
             }
           >
-            {hiddenCards.savings
-              ? "*****"
-              : formatCurrency(
-                  totalSavings
-                )}
+            {formatCurrency(
+              totalSavings
+            )}
           </h2>
 
           <p className="privacy-hint">
-            Click to hide/show
+            Applied income minus applied expenses
           </p>
 
         </div>
 
 
-        <div
-          className="stat-card private-card"
-          onClick={() =>
-            togglePrivacy(
-              "expenses"
-            )
-          }
-          title="Click to hide or show amount"
-        >
+        <div className="stat-card">
 
           <span className="stat-label">
             Total Expenses
           </span>
 
           <h2 className="expense-value">
-            {hiddenCards.expenses
-              ? "*****"
-              : formatCurrency(
-                  totalExpenses
-                )}
+            {formatCurrency(
+              totalExpenses
+            )}
           </h2>
 
           <p className="privacy-hint">
-            Click to hide/show
+            Expenses already added to your totals
           </p>
 
         </div>
@@ -570,18 +585,18 @@ function Dashboard() {
       </section>
 
 
-      {/* ==================================================
-          BUDGET TRACKER
-      ================================================== */}
+      {/* =================================================
+          MANAGE BUDGET
+      ================================================= */}
 
-      <section className="dashboard-budget-card">
+      <section className="budget-dashboard-card">
 
-        <div className="budget-header">
+        <div className="budget-dashboard-header">
 
           <div>
 
             <p className="page-label">
-              BUDGET TRACKER
+              DAILY BUDGET
             </p>
 
             <h2>
@@ -589,27 +604,68 @@ function Dashboard() {
             </h2>
 
             <p>
-              Set a spending limit and
-              track it automatically
-              using your transactions.
+              Set a budget for a week, two weeks,
+              or a month. Your daily allowance is
+              calculated automatically.
             </p>
 
           </div>
 
+          <button
+            type="button"
+            className="budget-reset-button"
+            onClick={resetBudget}
+          >
+            Reset Budget
+          </button>
+
         </div>
 
 
-        {/* BUDGET SETUP */}
+        {/* PERIOD */}
 
-        <div className="dashboard-budget-setup">
+        <div className="budget-period-buttons">
 
-          <div className="budget-field">
+          {PERIODS.map(
+            (period) => (
+
+              <button
+                key={
+                  period.value
+                }
+                type="button"
+                className={
+                  budgetData.period ===
+                  period.value
+                    ? "budget-period-button active"
+                    : "budget-period-button"
+                }
+                onClick={() =>
+                  changePeriod(
+                    period.value
+                  )
+                }
+              >
+                {period.label}
+              </button>
+
+            )
+          )}
+
+        </div>
+
+
+        {/* BUDGET INPUT */}
+
+        <div className="budget-input-row">
+
+          <div className="budget-input-group">
 
             <label>
-              Budget Amount
+              Total Budget
             </label>
 
-            <div className="budget-money-input">
+            <div className="budget-input-wrapper">
 
               <span>
                 ₱
@@ -621,14 +677,11 @@ function Dashboard() {
                 step="0.01"
                 placeholder="2,000"
                 value={
-                  budgetAmount
+                  budgetInput
                 }
-                onChange={(
-                  event
-                ) =>
-                  setBudgetAmount(
-                    event.target
-                      .value
+                onChange={(event) =>
+                  setBudgetInput(
+                    event.target.value
                   )
                 }
               />
@@ -638,51 +691,9 @@ function Dashboard() {
           </div>
 
 
-          <div className="budget-field">
-
-            <label>
-              Budget Period
-            </label>
-
-            <select
-              value={
-                budgetPeriod
-              }
-              onChange={(
-                event
-              ) =>
-                handlePeriodChange(
-                  event.target
-                    .value
-                )
-              }
-            >
-
-              {PERIODS.map(
-                (period) => (
-                  <option
-                    key={
-                      period.value
-                    }
-                    value={
-                      period.value
-                    }
-                  >
-                    {
-                      period.label
-                    }
-                  </option>
-                )
-              )}
-
-            </select>
-
-          </div>
-
-
           <button
             type="button"
-            className="budget-save-button"
+            className="submit-button submit-income"
             onClick={
               saveBudget
             }
@@ -693,278 +704,204 @@ function Dashboard() {
         </div>
 
 
-        {budgetMessage && (
+        {message && (
           <p className="budget-message">
-            {budgetMessage}
+            {message}
           </p>
         )}
 
 
-        {/* NO BUDGET */}
+        {/* BUDGET NUMBERS */}
 
-        {!budgetData && (
-          <div className="budget-empty-state">
+        <div className="budget-dashboard-stats">
+
+          <div>
+
+            <span>
+              Total Budget
+            </span>
 
             <strong>
-              No budget cycle yet
+              {formatCurrency(
+                allocatedBudget
+              )}
+            </strong>
+
+          </div>
+
+
+          <div>
+
+            <span>
+              Daily Budget
+            </span>
+
+            <strong>
+              {formatCurrency(
+                dailyBudget
+              )}
+            </strong>
+
+          </div>
+
+
+          <div>
+
+            <span>
+              Today's Expenses
+            </span>
+
+            <strong className="negative">
+              {formatCurrency(
+                todayExpenses
+              )}
+            </strong>
+
+          </div>
+
+
+          <div>
+
+            <span>
+              Remaining Today
+            </span>
+
+            <strong
+              className={
+                remainingToday >= 0
+                  ? "positive"
+                  : "negative"
+              }
+            >
+              {formatCurrency(
+                remainingToday
+              )}
+            </strong>
+
+          </div>
+
+        </div>
+
+
+        {/* TODAY PROGRESS */}
+
+        <div className="budget-usage">
+
+          <div className="budget-usage-header">
+
+            <div>
+
+              <strong>
+                Today's Budget Usage
+              </strong>
+
+              <span>
+                {todayExpensePercentage.toFixed(
+                  1
+                )}
+                % used
+              </span>
+
+            </div>
+
+            <strong>
+              {formatCurrency(
+                todayExpenses
+              )}
+              {" / "}
+              {formatCurrency(
+                dailyBudget
+              )}
+            </strong>
+
+          </div>
+
+
+          <div className="budget-progress-track">
+
+            <div
+              className={
+                todayExpensePercentage >
+                100
+                  ? "budget-progress-bar over-budget"
+                  : "budget-progress-bar"
+              }
+              style={{
+                width: `${progressPercentage}%`,
+              }}
+            />
+
+          </div>
+
+
+          {remainingToday <
+            0 && (
+
+            <p className="budget-warning">
+              You have exceeded today's
+              budget by{" "}
+              {formatCurrency(
+                Math.abs(
+                  remainingToday
+                )
+              )}
+              .
+            </p>
+
+          )}
+
+        </div>
+
+
+        {/* APPLY BUTTON */}
+
+        <div className="budget-apply-section">
+
+          <div>
+
+            <strong>
+              Today's Activity
             </strong>
 
             <p>
-              Enter your budget,
-              choose a period,
-              and save it to begin
-              tracking your spending.
+              {unappliedToday.length ===
+              0
+                ? "Everything has already been applied to your totals."
+                : `${unappliedToday.length} transaction${
+                    unappliedToday.length ===
+                    1
+                      ? ""
+                      : "s"
+                  } waiting to be applied.`}
             </p>
 
           </div>
-        )}
 
 
-        {/* ACTIVE / EXPIRED BUDGET */}
-
-        {budgetData &&
-          budgetCycle && (
-            <div className="dashboard-budget-content">
-
-              {/* PERIOD */}
-
-              <div className="budget-cycle-info">
-
-                <div>
-
-                  <span>
-                    Current Budget Cycle
-                  </span>
-
-                  <strong>
-                    {
-                      PERIODS.find(
-                        (
-                          period
-                        ) =>
-                          period.value ===
-                          budgetData.period
-                      )?.label
-                    }
-                  </strong>
-
-                </div>
-
-
-                <div>
-
-                  <span>
-                    Start Date
-                  </span>
-
-                  <strong>
-                    {formatDate(
-                      budgetCycle.startDate
-                    )}
-                  </strong>
-
-                </div>
-
-
-                <div>
-
-                  <span>
-                    End Date
-                  </span>
-
-                  <strong>
-                    {formatDate(
-                      budgetCycle.endDate
-                    )}
-                  </strong>
-
-                </div>
-
-
-                <div>
-
-                  <span>
-                    Status
-                  </span>
-
-                  <strong
-                    className={
-                      budgetCycle.isActive
-                        ? "budget-active"
-                        : "budget-expired"
-                    }
-                  >
-                    {budgetCycle.isActive
-                      ? "Active"
-                      : "Expired"}
-                  </strong>
-
-                </div>
-
-              </div>
-
-
-              {/* EXPIRED MESSAGE */}
-
-              {budgetCycle.isExpired && (
-                <div className="budget-expired-message">
-
-                  <strong>
-                    Your budget cycle has ended.
-                  </strong>
-
-                  <p>
-                    Save a new budget above
-                    to start another cycle.
-                  </p>
-
-                </div>
-              )}
-
-
-              {/* BUDGET NUMBERS */}
-
-              <div className="budget-stat-grid">
-
-                <div className="budget-stat">
-
-                  <span>
-                    Budget
-                  </span>
-
-                  <strong>
-                    {formatCurrency(
-                      allocatedBudget
-                    )}
-                  </strong>
-
-                </div>
-
-
-                <div className="budget-stat">
-
-                  <span>
-                    Spent
-                  </span>
-
-                  <strong className="negative">
-                    {formatCurrency(
-                      budgetExpenses
-                    )}
-                  </strong>
-
-                </div>
-
-
-                <div className="budget-stat">
-
-                  <span>
-                    Income
-                  </span>
-
-                  <strong className="positive">
-                    {formatCurrency(
-                      budgetIncome
-                    )}
-                  </strong>
-
-                </div>
-
-
-                <div className="budget-stat">
-
-                  <span>
-                    Remaining
-                  </span>
-
-                  <strong
-                    className={
-                      remainingBudget >=
-                      0
-                        ? "positive"
-                        : "negative"
-                    }
-                  >
-                    {formatCurrency(
-                      remainingBudget
-                    )}
-                  </strong>
-
-                </div>
-
-              </div>
-
-
-              {/* PROGRESS */}
-
-              <div className="budget-progress-section">
-
-                <div className="budget-progress-header">
-
-                  <div>
-
-                    <strong>
-                      Budget Used
-                    </strong>
-
-                    <span>
-                      {budgetPercentage.toFixed(
-                        1
-                      )}
-                      %
-                    </span>
-
-                  </div>
-
-                </div>
-
-
-                <div className="budget-progress-track">
-
-                  <div
-                    className={
-                      budgetPercentage >
-                      100
-                        ? "budget-progress-bar over-budget"
-                        : "budget-progress-bar"
-                    }
-                    style={{
-                      width: `${progressPercentage}%`,
-                    }}
-                  />
-
-                </div>
-
-
-                <p>
-                  {budgetPercentage <=
-                  100
-                    ? `${formatCurrency(
-                        Math.max(
-                          allocatedBudget -
-                            budgetExpenses,
-                          0
-                        )
-                      )} of your budget remains based on expenses.`
-                    : `You have exceeded your budget by ${formatCurrency(
-                        budgetExpenses -
-                          allocatedBudget
-                      )}.`}
-                </p>
-
-              </div>
-
-            </div>
-          )}
+          <button
+            type="button"
+            className="primary-button"
+            onClick={
+              applyToday
+            }
+            disabled={
+              unappliedToday.length ===
+              0
+            }
+          >
+            Apply Today's Activity
+          </button>
+
+        </div>
 
       </section>
 
 
-      {/* ==================================================
+      {/* =================================================
           TRANSACTIONS
-      ================================================== */}
+      ================================================= */}
 
-      <section className="dashboard-section transactions-section">
+      <section className="transactions-section">
 
         <div className="section-header">
 
@@ -975,8 +912,8 @@ function Dashboard() {
             </h2>
 
             <p>
-              View and manage your
-              recent transactions.
+              View and manage all your
+              recorded transactions.
             </p>
 
           </div>
@@ -985,17 +922,10 @@ function Dashboard() {
           <div className="transaction-actions">
 
             <Link
-              to="/add?type=Income"
-              className="primary-button income-button"
+              to="/add"
+              className="primary-button"
             >
-              Add Income
-            </Link>
-
-            <Link
-              to="/add?type=Expense"
-              className="primary-button expense-button"
-            >
-              Add Expense
+              + Add Transaction
             </Link>
 
           </div>
@@ -1017,24 +947,20 @@ function Dashboard() {
               value={
                 categoryFilter
               }
-              onChange={(
-                event
-              ) =>
+              onChange={(event) =>
                 setCategoryFilter(
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
             >
 
-              <option value="All">
+              <option value="">
                 All Categories
               </option>
 
               {CATEGORIES.map(
-                (
-                  category
-                ) => (
+                (category) => (
+
                   <option
                     key={
                       category
@@ -1045,6 +971,7 @@ function Dashboard() {
                   >
                     {category}
                   </option>
+
                 )
               )}
 
@@ -1063,17 +990,14 @@ function Dashboard() {
               value={
                 typeFilter
               }
-              onChange={(
-                event
-              ) =>
+              onChange={(event) =>
                 setTypeFilter(
-                  event.target
-                    .value
+                  event.target.value
                 )
               }
             >
 
-              <option value="All">
+              <option value="">
                 All Types
               </option>
 
@@ -1092,10 +1016,11 @@ function Dashboard() {
         </div>
 
 
-        {/* TRANSACTIONS */}
+        {/* TRANSACTION LIST */}
 
         {filteredTransactions.length ===
         0 ? (
+
           <div className="empty-state">
 
             <h3>
@@ -1103,108 +1028,109 @@ function Dashboard() {
             </h3>
 
             <p>
-              Add an income or
-              expense to start
-              tracking your
-              finances.
+              Add your first income or
+              expense to start tracking
+              your finances.
             </p>
 
-            <div className="empty-state-actions">
-
-              <Link
-                to="/add?type=Income"
-                className="secondary-button income-button"
-              >
-                Add Income
-              </Link>
-
-              <Link
-                to="/add?type=Expense"
-                className="secondary-button expense-button"
-              >
-                Add Expense
-              </Link>
-
-            </div>
+            <Link
+              to="/add"
+              className="primary-button"
+            >
+              Add Transaction
+            </Link>
 
           </div>
+
         ) : (
+
           <div className="transaction-grid">
 
-            {filteredTransactions.map(
-              (
-                transaction
-              ) => (
+            {filteredTransactions
+              .slice()
+              .reverse()
+              .map(
+                (
+                  transaction
+                ) => (
 
-                <Link
-                  key={
-                    transaction.id
-                  }
-                  to={`/transaction/${transaction.id}`}
-                  className="transaction-card"
-                >
+                  <Link
+                    key={
+                      transaction.id
+                    }
+                    to={`/transaction/${transaction.id}`}
+                    className="transaction-card"
+                  >
 
-                  <div className="transaction-card-top">
+                    <div className="transaction-card-top">
 
-                    <h3>
-                      {
-                        transaction.title ||
-                        transaction.description
-                      }
-                    </h3>
+                      <h3>
+                        {transaction.title ||
+                          transaction.description ||
+                          "Untitled Transaction"}
+                      </h3>
 
-                    <span
-                      className={
-                        transaction.type ===
+                      <span
+                        className={
+                          transaction.type ===
+                          "Income"
+                            ? "income-badge"
+                            : "expense-badge"
+                        }
+                      >
+                        {
+                          transaction.type
+                        }
+                      </span>
+
+                    </div>
+
+
+                    <div className="transaction-amount">
+
+                      <span
+                        className={
+                          transaction.type ===
+                          "Income"
+                            ? "positive"
+                            : "negative"
+                        }
+                      >
+                        {transaction.type ===
                         "Income"
-                          ? "income-badge"
-                          : "expense-badge"
-                      }
-                    >
-                      {
-                        transaction.type
-                      }
-                    </span>
+                          ? "+"
+                          : "-"}
+                        {formatCurrency(
+                          transaction.amount
+                        )}
+                      </span>
 
-                  </div>
+                    </div>
 
 
-                  <div className="transaction-amount">
+                    <div className="transaction-details">
 
-                    {transaction.type ===
-                    "Income"
-                      ? "+"
-                      : "-"}
+                      <span>
+                        {
+                          transaction.category
+                        }
+                      </span>
 
-                    {formatCurrency(
-                      transaction.amount
-                    )}
+                      <span>
+                        {
+                          transaction.date
+                        }
+                      </span>
 
-                  </div>
+                    </div>
 
+                  </Link>
 
-                  <div className="transaction-details">
-
-                    <span>
-                      {
-                        transaction.category
-                      }
-                    </span>
-
-                    <span>
-                      {
-                        transaction.date
-                      }
-                    </span>
-
-                  </div>
-
-                </Link>
-
-              )
-            )}
+                )
+              )}
 
           </div>
+
         )}
 
       </section>

@@ -36,7 +36,6 @@ function useTransactions() {
     }
   }, [transactions]);
 
-
   const addTransaction = (transaction) => {
     setTransactions(
       (currentTransactions) => [
@@ -45,7 +44,6 @@ function useTransactions() {
       ]
     );
   };
-
 
   const updateTransaction = (
     idOrTransaction,
@@ -79,7 +77,6 @@ function useTransactions() {
     );
   };
 
-
   const deleteTransaction = (id) => {
     setTransactions(
       (currentTransactions) =>
@@ -90,7 +87,6 @@ function useTransactions() {
         )
     );
   };
-
 
   return {
     transactions,

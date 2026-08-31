@@ -20,6 +20,9 @@ const categories = [
   "Other",
 ];
 
+const SCROLL_POSITION_STORAGE_KEY =
+  "budget-dashboard-scroll-position";
+
 function AddTransaction() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -84,6 +87,24 @@ function AddTransaction() {
       description: description.trim(),
       type,
     };
+
+    /*
+      Keep the dashboard's current scroll position.
+
+      This allows the dashboard to restore the exact
+      area where the user was before opening this page.
+    */
+    const currentScrollPosition = {
+      x: window.scrollX,
+      y: window.scrollY,
+    };
+
+    sessionStorage.setItem(
+      SCROLL_POSITION_STORAGE_KEY,
+      JSON.stringify(
+        currentScrollPosition
+      )
+    );
 
     addTransaction(newTransaction);
 

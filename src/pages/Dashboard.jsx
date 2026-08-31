@@ -1,4 +1,9 @@
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { Link } from "react-router-dom";
 
 import useTransactions from "../hooks/useTransactions";
@@ -14,6 +19,21 @@ const ACTIVE_DATE_STORAGE_KEY =
 
 const PRIVACY_STORAGE_KEY =
   "budget-privacy";
+
+const TOTAL_SAVED_MONEY_STORAGE_KEY =
+  "budget-total-saved-money";
+
+const WORK_DAYS_STORAGE_KEY =
+  "budget-work-days";
+
+const WORK_DAY_PROGRESS_STORAGE_KEY =
+  "budget-work-day-progress";
+
+const WEEK_START_STORAGE_KEY =
+  "budget-week-start";
+
+const DASHBOARD_SCROLL_STORAGE_KEY =
+  "budget-dashboard-scroll-position";
 
 const PERIODS = [
   {
@@ -109,6 +129,64 @@ function loadDailyRecords() {
 }
 
 
+function loadNumber(
+  key,
+  defaultValue = 0
+) {
+  try {
+    const saved =
+      localStorage.getItem(key);
+
+    if (
+      saved === null ||
+      saved === ""
+    ) {
+      return defaultValue;
+    }
+
+    const number =
+      Number(saved);
+
+    return Number.isFinite(number)
+      ? number
+      : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
+
+function loadWorkDays() {
+  const saved =
+    loadNumber(
+      WORK_DAYS_STORAGE_KEY,
+      5
+    );
+
+  return Math.min(
+    Math.max(
+      saved,
+      1
+    ),
+    7
+  );
+}
+
+
+function loadWorkDayProgress() {
+  const saved =
+    loadNumber(
+      WORK_DAY_PROGRESS_STORAGE_KEY,
+      1
+    );
+
+  return Math.max(
+    saved,
+    1
+  );
+}
+
+
 /* =====================================================
    DASHBOARD
 ===================================================== */
@@ -130,9 +208,6 @@ function Dashboard() {
 
   /* ===================================================
      ACTIVE DATE
-
-     This allows the user to finish one day and
-     explicitly move to the next one.
   =================================================== */
 
   const [activeDate, setActiveDate] =
@@ -170,6 +245,94 @@ function Dashboard() {
 
   const [dailyRecords, setDailyRecords] =
     useState(loadDailyRecords);
+
+
+  /* ===================================================
+     TOTAL SAVED MONEY
+
+     This is the amount the user already has saved.
+
+     It is separate from:
+     - current budget
+     - today's savings
+     - completed-day savings
+  =================================================== */
+
+  const [
+    totalSavedMoney,
+    setTotalSavedMoney,
+  ] = useState(() =>
+    loadNumber(
+      TOTAL_SAVED_MONEY_STORAGE_KEY,
+      0
+    )
+  );
+
+
+  const [
+    savedMoneyInput,
+    setSavedMoneyInput,
+  ] = useState(() => {
+
+    const saved =
+      loadNumber(
+        TOTAL_SAVED_MONEY_STORAGE_KEY,
+        0
+      );
+
+    return saved > 0
+      ? String(saved)
+      : "";
+
+  });
+
+
+  /* ===================================================
+     WORK / SCHOOL DAYS
+
+     Default = 5 days per week.
+  =================================================== */
+
+  const [
+    workDays,
+    setWorkDays,
+  ] = useState(
+    loadWorkDays
+  );
+
+
+  /* ===================================================
+     WORK / SCHOOL DAY PROGRESS
+  =================================================== */
+
+  const [
+    currentWorkDay,
+    setCurrentWorkDay,
+  ] = useState(
+    loadWorkDayProgress
+  );
+
+
+  /* ===================================================
+     WEEK START
+
+     Used to persist the user's current work/school
+     week even after refreshing.
+  =================================================== */
+
+  const [
+    weekStartDate,
+    setWeekStartDate,
+  ] = useState(() => {
+
+    return (
+      localStorage.getItem(
+        WEEK_START_STORAGE_KEY
+      ) ||
+      getLocalDate()
+    );
+
+  });
 
 
   /* ===================================================
@@ -241,10 +404,36 @@ function Dashboard() {
     ) || 0;
 
 
+  /* ===================================================
+     DAILY BUDGET
+
+     Work/school days are based on the selected number
+     of days per week.
+
+     Examples:
+
+     ₱2,000 / 4 days = ₱500 per day
+
+     For 2 weeks:
+     4 work days × 2 weeks = 8 days
+
+     For 30 days:
+     4 work days × (30 / 7) weeks
+  =================================================== */
+
+  const periodWeeks =
+    selectedPeriod.days / 7;
+
+
+  const workDaysInPeriod =
+    workDays *
+    periodWeeks;
+
+
   const dailyBudget =
-    selectedPeriod.days > 0
+    workDaysInPeriod > 0
       ? allocatedBudget /
-        selectedPeriod.days
+        workDaysInPeriod
       : 0;
 
 
@@ -323,12 +512,6 @@ function Dashboard() {
 
   /* ===================================================
      TODAY'S SAVINGS
-
-     IMPORTANT:
-
-     Savings = Budget - Expenses
-
-     It is NOT equal to expenses.
   =================================================== */
 
   const todaySavings =
@@ -387,15 +570,10 @@ function Dashboard() {
 
 
   /* ===================================================
-     TOTAL SAVINGS
-
-     ONLY completed/applied days count here.
-
-     This prevents today's temporary budget from
-     automatically changing the user's total savings.
+     COMPLETED-DAY SAVINGS
   =================================================== */
 
-  const totalSavings =
+  const completedDaySavings =
     dailyRecords.reduce(
       (total, record) =>
         total +
@@ -407,9 +585,18 @@ function Dashboard() {
 
 
   /* ===================================================
-     TOTAL EXPENSES
+     TOTAL SAVINGS
 
-     ONLY completed/applied days count here.
+     This keeps the existing "Total Savings" meaning,
+     based on completed days.
+  =================================================== */
+
+  const totalSavings =
+    completedDaySavings;
+
+
+  /* ===================================================
+     TOTAL EXPENSES
   =================================================== */
 
   const totalExpenses =
@@ -487,6 +674,88 @@ function Dashboard() {
       : `₱${formatted}`;
 
   };
+
+
+  /* ===================================================
+     RESTORE DASHBOARD SCROLL POSITION
+  =================================================== */
+
+  useEffect(() => {
+
+    const savedPosition =
+      sessionStorage.getItem(
+        DASHBOARD_SCROLL_STORAGE_KEY
+      );
+
+    if (
+      savedPosition === null
+    ) {
+      return;
+    }
+
+    const position =
+      Number(savedPosition);
+
+    if (
+      !Number.isFinite(position)
+    ) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+
+      window.scrollTo({
+        top: position,
+        behavior: "auto",
+      });
+
+      sessionStorage.removeItem(
+        DASHBOARD_SCROLL_STORAGE_KEY
+      );
+
+    });
+
+  }, []);
+
+
+  /* ===================================================
+     SAVE SCROLL POSITION WHILE ON DASHBOARD
+  =================================================== */
+
+  useEffect(() => {
+
+    const saveScrollPosition =
+      () => {
+
+        sessionStorage.setItem(
+          DASHBOARD_SCROLL_STORAGE_KEY,
+          String(window.scrollY)
+        );
+
+      };
+
+
+    window.addEventListener(
+      "scroll",
+      saveScrollPosition,
+      {
+        passive: true,
+      }
+    );
+
+
+    return () => {
+
+      saveScrollPosition();
+
+      window.removeEventListener(
+        "scroll",
+        saveScrollPosition
+      );
+
+    };
+
+  }, []);
 
 
   /* ===================================================
@@ -599,6 +868,98 @@ function Dashboard() {
 
 
   /* ===================================================
+     SAVE TOTAL SAVED MONEY
+  =================================================== */
+
+  const saveTotalSavedMoney = () => {
+
+    const amount =
+      Number(savedMoneyInput);
+
+
+    if (
+      savedMoneyInput === "" ||
+      !Number.isFinite(amount) ||
+      amount < 0
+    ) {
+
+      setMessage(
+        "Please enter a valid saved amount."
+      );
+
+      return;
+    }
+
+
+    setTotalSavedMoney(
+      amount
+    );
+
+
+    localStorage.setItem(
+      TOTAL_SAVED_MONEY_STORAGE_KEY,
+      String(amount)
+    );
+
+
+    setMessage(
+      "Total saved money updated successfully."
+    );
+
+
+    setTimeout(() => {
+      setMessage("");
+    }, 2500);
+
+  };
+
+
+  /* ===================================================
+     CHANGE WORK / SCHOOL DAYS
+  =================================================== */
+
+  const changeWorkDays = (
+    days
+  ) => {
+
+    const newDays =
+      Number(days);
+
+
+    setWorkDays(
+      newDays
+    );
+
+
+    localStorage.setItem(
+      WORK_DAYS_STORAGE_KEY,
+      String(newDays)
+    );
+
+
+    /*
+      If the current progress is greater than the new
+      number of selected days, restart at Day 1.
+    */
+
+    if (
+      currentWorkDay >
+      newDays
+    ) {
+
+      setCurrentWorkDay(1);
+
+      localStorage.setItem(
+        WORK_DAY_PROGRESS_STORAGE_KEY,
+        "1"
+      );
+
+    }
+
+  };
+
+
+  /* ===================================================
      RESET BUDGET
   =================================================== */
 
@@ -650,27 +1011,90 @@ function Dashboard() {
 
 
   /* ===================================================
-     APPLY TODAY'S ACTIVITY
-
-     Creates or updates the record for this date.
+     CREATE DAILY RECORD
   =================================================== */
 
-  const applyToday = () => {
+  const createDailyRecord = (
+    date
+  ) => {
 
-    const newRecord = {
-      date: activeDate,
+    const dayTransactions =
+      transactions.filter(
+        (transaction) =>
+          transaction.date ===
+          date
+      );
+
+
+    const expenses =
+      dayTransactions
+        .filter(
+          (transaction) =>
+            transaction.type ===
+            "Expense"
+        )
+        .reduce(
+          (total, transaction) =>
+            total +
+            Number(
+              transaction.amount || 0
+            ),
+          0
+        );
+
+
+    const income =
+      dayTransactions
+        .filter(
+          (transaction) =>
+            transaction.type ===
+            "Income"
+        )
+        .reduce(
+          (total, transaction) =>
+            total +
+            Number(
+              transaction.amount || 0
+            ),
+          0
+        );
+
+
+    const record = {
+      date,
       budget: dailyBudget,
-      income: todayIncome,
-      expenses: todayExpenses,
-      savings: todaySavings,
+      income,
+      expenses,
+      savings:
+        dailyBudget -
+        expenses,
     };
+
+
+    return record;
+
+  };
+
+
+  /* ===================================================
+     SAVE DAILY RECORD
+  =================================================== */
+
+  const saveDailyRecord = (
+    date
+  ) => {
+
+    const newRecord =
+      createDailyRecord(
+        date
+      );
 
 
     const existingRecord =
       dailyRecords.find(
         (record) =>
           record.date ===
-          activeDate
+          date
       );
 
 
@@ -683,7 +1107,7 @@ function Dashboard() {
         dailyRecords.map(
           (record) =>
             record.date ===
-            activeDate
+            date
               ? newRecord
               : record
         );
@@ -708,6 +1132,98 @@ function Dashboard() {
       JSON.stringify(
         updatedRecords
       )
+    );
+
+
+    return updatedRecords;
+
+  };
+
+
+  /* ===================================================
+     AUTOMATIC NEW-DAY CHECK
+
+     If the browser is opened/refreshed on a new
+     calendar day, the previous active day is saved
+     into history and the active date becomes today.
+
+     Transactions themselves are NOT deleted.
+  =================================================== */
+
+  useEffect(() => {
+
+    if (
+      activeDate >=
+      systemToday
+    ) {
+      return;
+    }
+
+
+    const previousRecord =
+      dailyRecords.find(
+        (record) =>
+          record.date ===
+          activeDate
+      );
+
+
+    if (!previousRecord) {
+
+      const automaticRecord =
+        createDailyRecord(
+          activeDate
+        );
+
+
+      const updatedRecords = [
+        ...dailyRecords,
+        automaticRecord,
+      ];
+
+
+      setDailyRecords(
+        updatedRecords
+      );
+
+
+      localStorage.setItem(
+        DAILY_RECORDS_STORAGE_KEY,
+        JSON.stringify(
+          updatedRecords
+        )
+      );
+
+    }
+
+
+    setActiveDate(
+      systemToday
+    );
+
+
+    localStorage.setItem(
+      ACTIVE_DATE_STORAGE_KEY,
+      systemToday
+    );
+
+
+  }, [
+    systemToday,
+    activeDate,
+  ]);
+
+
+  /* ===================================================
+     APPLY TODAY'S ACTIVITY
+
+     Creates or updates the record for the active date.
+  =================================================== */
+
+  const applyToday = () => {
+
+    saveDailyRecord(
+      activeDate
     );
 
 
@@ -725,9 +1241,6 @@ function Dashboard() {
 
   /* ===================================================
      DAY OVER / NEXT DAY
-
-     Saves the current day first, then moves to the
-     actual current date.
   =================================================== */
 
   const finishDay = () => {
@@ -744,65 +1257,68 @@ function Dashboard() {
 
 
     /* -----------------------------------------------
-       Save today's record automatically
+       Save current day's record
     ------------------------------------------------ */
 
-    const newRecord = {
-      date: activeDate,
-      budget: dailyBudget,
-      income: todayIncome,
-      expenses: todayExpenses,
-      savings: todaySavings,
-    };
-
-
-    const existingRecord =
-      dailyRecords.find(
-        (record) =>
-          record.date ===
-          activeDate
-      );
-
-
-    let updatedRecords;
-
-
-    if (existingRecord) {
-
-      updatedRecords =
-        dailyRecords.map(
-          (record) =>
-            record.date ===
-            activeDate
-              ? newRecord
-              : record
-        );
-
-    } else {
-
-      updatedRecords = [
-        ...dailyRecords,
-        newRecord,
-      ];
-
-    }
-
-
-    setDailyRecords(
-      updatedRecords
-    );
-
-
-    localStorage.setItem(
-      DAILY_RECORDS_STORAGE_KEY,
-      JSON.stringify(
-        updatedRecords
-      )
+    saveDailyRecord(
+      activeDate
     );
 
 
     /* -----------------------------------------------
-       Move to today
+       Advance work/school day
+    ------------------------------------------------ */
+
+    let nextWorkDay;
+
+
+    if (
+      currentWorkDay >=
+      workDays
+    ) {
+
+      /*
+        All selected work/school days have been
+        completed.
+
+        Start a new week at Day 1.
+      */
+
+      nextWorkDay = 1;
+
+      const newWeekStart =
+        systemToday;
+
+      setWeekStartDate(
+        newWeekStart
+      );
+
+      localStorage.setItem(
+        WEEK_START_STORAGE_KEY,
+        newWeekStart
+      );
+
+    } else {
+
+      nextWorkDay =
+        currentWorkDay + 1;
+
+    }
+
+
+    setCurrentWorkDay(
+      nextWorkDay
+    );
+
+
+    localStorage.setItem(
+      WORK_DAY_PROGRESS_STORAGE_KEY,
+      String(nextWorkDay)
+    );
+
+
+    /* -----------------------------------------------
+       Move active date to today
     ------------------------------------------------ */
 
     setActiveDate(
@@ -831,11 +1347,12 @@ function Dashboard() {
 
 
   /* ===================================================
-     IF USER HAS NOT FINISHED PREVIOUS DAY
+     PREVIOUS DAY
   =================================================== */
 
   const isPreviousDay =
-    activeDate < systemToday;
+    activeDate <
+    systemToday;
 
 
   /* ===================================================
@@ -1218,6 +1735,144 @@ function Dashboard() {
         </div>
 
 
+        {/* =================================================
+            TOTAL SAVED MONEY
+        ================================================= */}
+
+        <div className="budget-input-row">
+
+          <div className="budget-input-group">
+
+            <label>
+              Total Saved Money
+            </label>
+
+            <div className="budget-input-wrapper">
+
+              <span>
+                ₱
+              </span>
+
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={
+                  savedMoneyInput
+                }
+                onChange={(event) =>
+                  setSavedMoneyInput(
+                    event.target.value
+                  )
+                }
+              />
+
+            </div>
+
+          </div>
+
+
+          <button
+            type="button"
+            className="submit-button submit-income"
+            onClick={
+              saveTotalSavedMoney
+            }
+          >
+            Save Savings
+          </button>
+
+        </div>
+
+
+        {/* =================================================
+            WORK / SCHOOL DAYS
+        ================================================= */}
+
+        <div className="work-days-section">
+
+          <div className="budget-input-group">
+
+            <label>
+              Work/School Days Per Week
+            </label>
+
+            <p className="input-description">
+              Choose how many days you normally
+              work or attend school each week.
+            </p>
+
+          </div>
+
+
+          <div className="budget-period-buttons">
+
+            {[1, 2, 3, 4, 5, 6, 7].map(
+              (days) => (
+
+                <button
+                  key={days}
+                  type="button"
+                  className={
+                    workDays === days
+                      ? "budget-period-button active"
+                      : "budget-period-button"
+                  }
+                  onClick={() =>
+                    changeWorkDays(
+                      days
+                    )
+                  }
+                >
+                  {days}{" "}
+                  {days === 1
+                    ? "Day"
+                    : "Days"}
+                </button>
+
+              )
+            )}
+
+          </div>
+
+
+          <div className="work-days-summary">
+
+            <span>
+              Daily Budget
+            </span>
+
+            <strong>
+              {formatCurrency(
+                dailyBudget
+              )}
+            </strong>
+
+          </div>
+
+
+          <div className="work-days-progress">
+
+            <span>
+              Current Work/School Day
+            </span>
+
+            <strong>
+              Day{" "}
+              {Math.min(
+                currentWorkDay,
+                workDays
+              )}{" "}
+              /{" "}
+              {workDays}
+            </strong>
+
+          </div>
+
+        </div>
+
+
         {message && (
           <p className="budget-message">
             {message}
@@ -1225,7 +1880,9 @@ function Dashboard() {
         )}
 
 
-        {/* BUDGET STATISTICS */}
+        {/* =================================================
+            BUDGET STATISTICS
+        ================================================= */}
 
         <div className="budget-dashboard-stats">
 
@@ -1303,7 +1960,9 @@ function Dashboard() {
         </div>
 
 
-        {/* USAGE */}
+        {/* =================================================
+            USAGE
+        ================================================= */}
 
         <div className="budget-usage">
 
@@ -1370,7 +2029,9 @@ function Dashboard() {
         </div>
 
 
-        {/* DAY ACTIONS */}
+        {/* =================================================
+            DAY ACTIONS
+        ================================================= */}
 
         <div className="budget-apply-section">
 

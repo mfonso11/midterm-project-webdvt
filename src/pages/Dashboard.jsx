@@ -63,9 +63,11 @@ function getLocalDate() {
   const date = new Date();
 
   const year = date.getFullYear();
+
   const month = String(
     date.getMonth() + 1
   ).padStart(2, "0");
+
   const day = String(
     date.getDate()
   ).padStart(2, "0");
@@ -83,9 +85,11 @@ function addDays(dateString, amount) {
   );
 
   const year = date.getFullYear();
+
   const month = String(
     date.getMonth() + 1
   ).padStart(2, "0");
+
   const day = String(
     date.getDate()
   ).padStart(2, "0");
@@ -152,7 +156,8 @@ function loadNumber(
       return defaultValue;
     }
 
-    const number = Number(saved);
+    const number =
+      Number(saved);
 
     return Number.isFinite(number)
       ? number
@@ -163,27 +168,77 @@ function loadNumber(
 }
 
 function loadWorkDays() {
-  const saved = loadNumber(
-    WORK_DAYS_STORAGE_KEY,
-    5
-  );
+  const saved =
+    loadNumber(
+      WORK_DAYS_STORAGE_KEY,
+      5
+    );
 
   return Math.min(
-    Math.max(saved, 1),
+    Math.max(
+      saved,
+      1
+    ),
     7
   );
 }
 
 function loadWorkDayProgress() {
-  const saved = loadNumber(
-    WORK_DAY_PROGRESS_STORAGE_KEY,
-    1
-  );
+  const saved =
+    loadNumber(
+      WORK_DAY_PROGRESS_STORAGE_KEY,
+      1
+    );
 
   return Math.min(
-    Math.max(saved, 1),
+    Math.max(
+      saved,
+      1
+    ),
     7
   );
+}
+
+/* =====================================================
+   TRANSACTION STORAGE
+===================================================== */
+
+function removeTransactionsForDate(
+  date
+) {
+  try {
+    const saved =
+      localStorage.getItem(
+        TRANSACTIONS_STORAGE_KEY
+      );
+
+    if (!saved) {
+      return;
+    }
+
+    const transactions =
+      JSON.parse(saved);
+
+    if (!Array.isArray(transactions)) {
+      return;
+    }
+
+    const remaining =
+      transactions.filter(
+        (transaction) =>
+          transaction.date !== date
+      );
+
+    localStorage.setItem(
+      TRANSACTIONS_STORAGE_KEY,
+      JSON.stringify(remaining)
+    );
+  } catch (error) {
+    console.error(
+      "Failed to remove daily transactions:",
+      error
+    );
+  }
 }
 
 /* =====================================================
@@ -196,6 +251,10 @@ function Dashboard() {
     deleteTransaction,
   } = useTransactions();
 
+  /* ===================================================
+     SYSTEM DATE
+  =================================================== */
+
   const systemToday =
     getLocalDate();
 
@@ -205,11 +264,12 @@ function Dashboard() {
 
   const [activeDate, setActiveDate] =
     useState(() => {
-      return (
+      const saved =
         localStorage.getItem(
           ACTIVE_DATE_STORAGE_KEY
-        ) || systemToday
-      );
+        );
+
+      return saved || getLocalDate();
     });
 
   /* ===================================================
@@ -235,26 +295,7 @@ function Dashboard() {
     );
 
   /* ===================================================
-     TOTAL SAVINGS
-
-     IMPORTANT:
-
-     This is now the ACTUAL running total.
-
-     Example:
-
-     Starting = 9000
-
-     Day 1:
-       +330
-       = 9330
-
-     Day 2:
-       +230
-       = 9560
-
-     Updating the same day again will NOT
-     add the same savings twice.
+     MANUAL SAVED MONEY
   =================================================== */
 
   const [
@@ -271,12 +312,13 @@ function Dashboard() {
     savedMoneyInput,
     setSavedMoneyInput,
   ] = useState(() => {
-    return String(
+    const saved =
       loadNumber(
         TOTAL_SAVED_MONEY_STORAGE_KEY,
         0
-      )
-    );
+      );
+
+    return String(saved);
   });
 
   /* ===================================================
@@ -289,6 +331,10 @@ function Dashboard() {
   ] = useState(
     loadWorkDays
   );
+
+  /* ===================================================
+     CURRENT WORK / SCHOOL DAY
+  =================================================== */
 
   const [
     currentWorkDay,
@@ -308,7 +354,8 @@ function Dashboard() {
     return (
       localStorage.getItem(
         WEEK_START_STORAGE_KEY
-      ) || systemToday
+      ) ||
+      systemToday
     );
   });
 
@@ -462,21 +509,15 @@ function Dashboard() {
 
   /* ===================================================
      TODAY SAVINGS
-
-     Savings is the amount of the daily budget
-     that remains after expenses.
-
-     Example:
-
-     Budget = 500
-     Expenses = 170
-
-     Savings = 330
   =================================================== */
 
   const todaySavings =
     dailyBudget -
     todayExpenses;
+
+  /* ===================================================
+     REMAINING TODAY
+  =================================================== */
 
   const remainingToday =
     dailyBudget -
@@ -520,9 +561,29 @@ function Dashboard() {
     );
 
   /* ===================================================
-     TOTAL EXPENSES
+     COMPLETED DAILY SAVINGS
+  =================================================== */
 
-     Only completed days are included.
+  const completedDaySavings =
+    dailyRecords.reduce(
+      (total, record) =>
+        total +
+        Number(
+          record.savings || 0
+        ),
+      0
+    );
+
+  /* ===================================================
+     TOTAL SAVINGS
+  =================================================== */
+
+  const totalSavings =
+    totalSavedMoney +
+    completedDaySavings;
+
+  /* ===================================================
+     TOTAL EXPENSES
   =================================================== */
 
   const totalExpenses =
@@ -607,7 +668,7 @@ function Dashboard() {
     );
 
   /* ===================================================
-     NEXT DATE
+     NEXT CALENDAR DATE
   =================================================== */
 
   const nextDate =
@@ -617,7 +678,7 @@ function Dashboard() {
     );
 
   /* ===================================================
-     SAVE SCROLL
+     RESTORE DASHBOARD SCROLL
   =================================================== */
 
   useEffect(() => {
@@ -644,7 +705,9 @@ function Dashboard() {
         );
     } catch {
       position =
-        Number(savedPosition);
+        Number(
+          savedPosition
+        );
     }
 
     if (
@@ -664,6 +727,10 @@ function Dashboard() {
       );
     });
   }, []);
+
+  /* ===================================================
+     SAVE SCROLL
+  =================================================== */
 
   useEffect(() => {
     const saveScrollPosition =
@@ -696,7 +763,7 @@ function Dashboard() {
   }, []);
 
   /* ===================================================
-     ACTIVE DATE STORAGE
+     KEEP ACTIVE DATE IN STORAGE
   =================================================== */
 
   useEffect(() => {
@@ -704,7 +771,9 @@ function Dashboard() {
       ACTIVE_DATE_STORAGE_KEY,
       activeDate
     );
-  }, [activeDate]);
+  }, [
+    activeDate,
+  ]);
 
   /* ===================================================
      PRIVACY
@@ -713,7 +782,8 @@ function Dashboard() {
   const togglePrivacy = () => {
     setPrivacyMode(
       (current) => {
-        const next = !current;
+        const next =
+          !current;
 
         localStorage.setItem(
           PRIVACY_STORAGE_KEY,
@@ -796,19 +866,7 @@ function Dashboard() {
   };
 
   /* ===================================================
-     SAVE TOTAL SAVINGS
-
-     This replaces the actual running total.
-
-     It can be changed as many times as needed.
-
-     Example:
-
-     Current total = 9560
-
-     User enters 10000
-
-     New total = 10000
+     SAVE MANUAL TOTAL SAVINGS
   =================================================== */
 
   const saveTotalSavedMoney = () => {
@@ -837,7 +895,7 @@ function Dashboard() {
     );
 
     setMessage(
-      "Total savings updated successfully."
+      "Total saved money updated successfully."
     );
 
     setTimeout(() => {
@@ -846,21 +904,26 @@ function Dashboard() {
   };
 
   /* ===================================================
-     RESET TOTAL SAVINGS
+     RESET MANUAL SAVINGS
   =================================================== */
 
   const resetTotalSavedMoney = () => {
     const confirmed =
       window.confirm(
-        "Reset your total savings to ₱0.00?"
+        "Reset your manually entered total saved money to ₱0.00?"
       );
 
     if (!confirmed) {
       return;
     }
 
-    setTotalSavedMoney(0);
-    setSavedMoneyInput("0");
+    setTotalSavedMoney(
+      0
+    );
+
+    setSavedMoneyInput(
+      "0"
+    );
 
     localStorage.setItem(
       TOTAL_SAVED_MONEY_STORAGE_KEY,
@@ -868,7 +931,7 @@ function Dashboard() {
     );
 
     setMessage(
-      "Total savings has been reset."
+      "Manual saved money has been reset."
     );
 
     setTimeout(() => {
@@ -906,7 +969,9 @@ function Dashboard() {
       currentWorkDay >
       newDays
     ) {
-      setCurrentWorkDay(1);
+      setCurrentWorkDay(
+        1
+      );
 
       localStorage.setItem(
         WORK_DAY_PROGRESS_STORAGE_KEY,
@@ -938,7 +1003,9 @@ function Dashboard() {
       resetData
     );
 
-    setBudgetInput("");
+    setBudgetInput(
+      ""
+    );
 
     localStorage.setItem(
       BUDGET_STORAGE_KEY,
@@ -954,6 +1021,117 @@ function Dashboard() {
     setTimeout(() => {
       setMessage("");
     }, 2500);
+  };
+
+  /* ===================================================
+     RESET ALL DATA
+  =================================================== */
+
+  const resetAllData = () => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to reset ALL data?\n\n" +
+        "This will permanently delete your budget, " +
+        "savings, expenses, daily history, transactions, " +
+        "and all other Budget Tracker data.\n\n" +
+        "This action cannot be undone."
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    /* -----------------------------------------------
+       Remove every Budget Tracker localStorage item
+    ------------------------------------------------ */
+
+    localStorage.removeItem(
+      BUDGET_STORAGE_KEY
+    );
+
+    localStorage.removeItem(
+      DAILY_RECORDS_STORAGE_KEY
+    );
+
+    localStorage.removeItem(
+      ACTIVE_DATE_STORAGE_KEY
+    );
+
+    localStorage.removeItem(
+      PRIVACY_STORAGE_KEY
+    );
+
+    localStorage.removeItem(
+      TOTAL_SAVED_MONEY_STORAGE_KEY
+    );
+
+    localStorage.removeItem(
+      WORK_DAYS_STORAGE_KEY
+    );
+
+    localStorage.removeItem(
+      WORK_DAY_PROGRESS_STORAGE_KEY
+    );
+
+    localStorage.removeItem(
+      WEEK_START_STORAGE_KEY
+    );
+
+    localStorage.removeItem(
+      DASHBOARD_SCROLL_STORAGE_KEY
+    );
+
+    localStorage.removeItem(
+      TRANSACTIONS_STORAGE_KEY
+    );
+
+    /* -----------------------------------------------
+       Reset React state
+    ------------------------------------------------ */
+
+    setBudgetData({
+      amount: "",
+      period: "week",
+    });
+
+    setBudgetInput("");
+
+    setDailyRecords([]);
+
+    setTotalSavedMoney(0);
+
+    setSavedMoneyInput("0");
+
+    setWorkDays(5);
+
+    setCurrentWorkDay(1);
+
+    setWeekStartDate(
+      getLocalDate()
+    );
+
+    setActiveDate(
+      getLocalDate()
+    );
+
+    setPrivacyMode(false);
+
+    setCategoryFilter("");
+
+    setTypeFilter("");
+
+    setMessage(
+      "All Budget Tracker data has been reset."
+    );
+
+    /*
+       Reload the page so useTransactions
+       also initializes with an empty array.
+    */
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
 
   /* ===================================================
@@ -1002,44 +1180,19 @@ function Dashboard() {
           0
         );
 
-    const savings =
-      dailyBudget -
-      expenses;
-
     return {
       date,
       budget: dailyBudget,
       income,
       expenses,
-      savings,
+      savings:
+        dailyBudget -
+        expenses,
     };
   };
 
   /* ===================================================
      SAVE DAILY RECORD
-
-     This is where the major savings bug is fixed.
-
-     If the day has NEVER been saved:
-
-       Add today's savings.
-
-     If the day WAS already saved:
-
-       Calculate the difference between the
-       old savings and new savings.
-
-     Example:
-
-       Old = 330
-       New = 230
-
-       Difference = -100
-
-       Total savings is reduced by 100.
-
-     This means the button can be clicked
-     unlimited times without duplicate additions.
   =================================================== */
 
   const saveDailyRecord = (
@@ -1050,112 +1203,58 @@ function Dashboard() {
         date
       );
 
-    const existingRecord =
-      dailyRecords.find(
+    const existingIndex =
+      dailyRecords.findIndex(
         (record) =>
           record.date ===
           date
       );
 
-    const oldSavings =
-      existingRecord
-        ? Number(
-            existingRecord.savings || 0
-          )
-        : 0;
+    let updatedRecords;
 
-    const newSavings =
-      Number(
-        newRecord.savings || 0
-      );
-
-    const difference =
-      newSavings -
-      oldSavings;
-
-    /* -----------------------------------------------
-       Update actual total savings.
-    ------------------------------------------------ */
-
-    if (difference !== 0) {
-      setTotalSavedMoney(
-        (currentTotal) => {
-          const updatedTotal =
-            currentTotal +
-            difference;
-
-          localStorage.setItem(
-            TOTAL_SAVED_MONEY_STORAGE_KEY,
-            String(updatedTotal)
-          );
-
-          return updatedTotal;
-        }
-      );
+    if (
+      existingIndex !== -1
+    ) {
+      updatedRecords =
+        dailyRecords.map(
+          (record, index) =>
+            index ===
+            existingIndex
+              ? newRecord
+              : record
+        );
+    } else {
+      updatedRecords = [
+        ...dailyRecords,
+        newRecord,
+      ];
     }
 
-    /* -----------------------------------------------
-       Replace existing daily record,
-       or add a new one.
-    ------------------------------------------------ */
-
     setDailyRecords(
-      (currentRecords) => {
-        const index =
-          currentRecords.findIndex(
-            (record) =>
-              record.date ===
-              date
-          );
-
-        let updatedRecords;
-
-        if (index !== -1) {
-          updatedRecords =
-            currentRecords.map(
-              (record, recordIndex) =>
-                recordIndex === index
-                  ? newRecord
-                  : record
-            );
-        } else {
-          updatedRecords = [
-            ...currentRecords,
-            newRecord,
-          ];
-        }
-
-        localStorage.setItem(
-          DAILY_RECORDS_STORAGE_KEY,
-          JSON.stringify(
-            updatedRecords
-          )
-        );
-
-        return updatedRecords;
-      }
+      updatedRecords
     );
 
-    return {
-      newRecord,
-      difference,
-    };
+    localStorage.setItem(
+      DAILY_RECORDS_STORAGE_KEY,
+      JSON.stringify(
+        updatedRecords
+      )
+    );
+
+    return newRecord;
   };
 
   /* ===================================================
-     APPLY / UPDATE TODAY
+     APPLY TODAY'S ACTIVITY
   =================================================== */
 
   const applyToday = () => {
-    const result =
-      saveDailyRecord(
-        activeDate
-      );
+    saveDailyRecord(
+      activeDate
+    );
 
     setMessage(
-      result.difference === 0
-        ? "Today's totals are already up to date."
-        : "Today's totals have been updated successfully."
+      "Today's activity has been saved to your daily totals."
     );
 
     setTimeout(() => {
@@ -1185,56 +1284,13 @@ function Dashboard() {
       }
     );
 
-    try {
-      const saved =
-        localStorage.getItem(
-          TRANSACTIONS_STORAGE_KEY
-        );
-
-      if (saved) {
-        const parsed =
-          JSON.parse(saved);
-
-        if (
-          Array.isArray(parsed)
-        ) {
-          const remaining =
-            parsed.filter(
-              (transaction) =>
-                transaction.date !==
-                date
-            );
-
-          localStorage.setItem(
-            TRANSACTIONS_STORAGE_KEY,
-            JSON.stringify(
-              remaining
-            )
-          );
-        }
-      }
-    } catch (error) {
-      console.error(
-        "Failed to clear daily transactions:",
-        error
-      );
-    }
+    removeTransactionsForDate(
+      date
+    );
   };
 
   /* ===================================================
-     DAY OVER
-
-     IMPORTANT:
-
-     The daily record is saved FIRST.
-
-     The savings is added only once through
-     saveDailyRecord().
-
-     Then transactions are deleted.
-
-     The new day gets zero transactions,
-     zero expenses, and its own fresh budget.
+     DAY OVER / NEXT DAY
   =================================================== */
 
   const finishDay = () => {
@@ -1244,42 +1300,28 @@ function Dashboard() {
           activeDate
         )} and move to ${formatDate(
           nextDate
-        )}?
-
-Your transactions for ${formatDate(
+        )}? Your transactions for ${formatDate(
           activeDate
-        )} will be cleared, but your daily history and total savings will be kept.`
+        )} will be cleared.`
       );
 
     if (!confirmed) {
       return;
     }
 
-    /* -----------------------------------------------
-       STEP 1
-       Save/update today's totals.
-
-       This adds ONLY the difference from the
-       previously saved version of this day.
-    ------------------------------------------------ */
+    /* Save completed day */
 
     saveDailyRecord(
       activeDate
     );
 
-    /* -----------------------------------------------
-       STEP 2
-       Delete completed day's transactions.
-    ------------------------------------------------ */
+    /* Delete today's transactions */
 
     deleteDayTransactions(
       activeDate
     );
 
-    /* -----------------------------------------------
-       STEP 3
-       Move to next calendar day.
-    ------------------------------------------------ */
+    /* Move to next calendar date */
 
     setActiveDate(
       nextDate
@@ -1290,12 +1332,11 @@ Your transactions for ${formatDate(
       nextDate
     );
 
-    /* -----------------------------------------------
-       STEP 4
-       Advance work/school day.
-    ------------------------------------------------ */
+    /* Move work/school day forward */
 
     let nextWorkDay;
+    let nextWeekStart =
+      weekStartDate;
 
     if (
       currentWorkDay >=
@@ -1303,13 +1344,16 @@ Your transactions for ${formatDate(
     ) {
       nextWorkDay = 1;
 
+      nextWeekStart =
+        nextDate;
+
       setWeekStartDate(
-        nextDate
+        nextWeekStart
       );
 
       localStorage.setItem(
         WEEK_START_STORAGE_KEY,
-        nextDate
+        nextWeekStart
       );
     } else {
       nextWorkDay =
@@ -1324,11 +1368,6 @@ Your transactions for ${formatDate(
       WORK_DAY_PROGRESS_STORAGE_KEY,
       String(nextWorkDay)
     );
-
-    /* -----------------------------------------------
-       STEP 5
-       New day starts clean.
-    ------------------------------------------------ */
 
     setMessage(
       `Day completed. Now tracking ${formatDate(
@@ -1350,7 +1389,7 @@ Your transactions for ${formatDate(
     systemToday;
 
   /* ===================================================
-     HISTORY
+     SORT HISTORY
   =================================================== */
 
   const sortedDailyRecords =
@@ -1404,6 +1443,7 @@ Your transactions for ${formatDate(
 
       </div>
 
+
       {/* =================================================
           TOTALS
       ================================================= */}
@@ -1418,21 +1458,23 @@ Your transactions for ${formatDate(
 
           <h2
             className={
-              totalSavedMoney >= 0
+              totalSavings >= 0
                 ? "positive-value"
                 : "negative-value"
             }
           >
             {formatCurrency(
-              totalSavedMoney
+              totalSavings
             )}
           </h2>
 
           <p className="privacy-hint">
-            Your running total savings.
+            Manual savings + completed
+            daily savings.
           </p>
 
         </div>
+
 
         <div className="stat-card expenses-stat-card">
 
@@ -1440,7 +1482,13 @@ Your transactions for ${formatDate(
             Total Expenses
           </span>
 
-          <h2 className="expense-value">
+          <h2
+            className={
+              totalExpenses >= 0
+                ? "expense-value"
+                : "negative-value"
+            }
+          >
             {formatCurrency(
               totalExpenses
             )}
@@ -1453,6 +1501,7 @@ Your transactions for ${formatDate(
         </div>
 
       </section>
+
 
       {/* =================================================
           TODAY'S MONEY
@@ -1478,6 +1527,7 @@ Your transactions for ${formatDate(
 
         </div>
 
+
         <div className="today-summary-card">
 
           <span>
@@ -1502,6 +1552,7 @@ Your transactions for ${formatDate(
 
         </div>
 
+
         <div className="today-summary-card">
 
           <span>
@@ -1525,6 +1576,7 @@ Your transactions for ${formatDate(
           </small>
 
         </div>
+
 
         <div className="today-summary-card">
 
@@ -1551,6 +1603,7 @@ Your transactions for ${formatDate(
         </div>
 
       </section>
+
 
       {/* =================================================
           BUDGET
@@ -1605,6 +1658,7 @@ Your transactions for ${formatDate(
 
           </div>
 
+
           <button
             type="button"
             className="budget-reset-button"
@@ -1614,6 +1668,7 @@ Your transactions for ${formatDate(
           </button>
 
         </div>
+
 
         {/* =================================================
             PREVIOUS DAY WARNING
@@ -1644,6 +1699,7 @@ Your transactions for ${formatDate(
 
           </div>
         )}
+
 
         {/* =================================================
             PERIOD
@@ -1677,6 +1733,7 @@ Your transactions for ${formatDate(
 
         </div>
 
+
         {/* =================================================
             BUDGET INPUT
         ================================================= */}
@@ -1699,7 +1756,7 @@ Your transactions for ${formatDate(
                 type="number"
                 min="0"
                 step="0.01"
-                placeholder="2,000"
+                placeholder="0"
                 value={
                   budgetInput
                 }
@@ -1714,6 +1771,7 @@ Your transactions for ${formatDate(
 
           </div>
 
+
           <button
             type="button"
             className="submit-button submit-income"
@@ -1724,8 +1782,9 @@ Your transactions for ${formatDate(
 
         </div>
 
+
         {/* =================================================
-            TOTAL SAVINGS INPUT
+            MANUAL TOTAL SAVINGS
         ================================================= */}
 
         <div className="budget-input-row">
@@ -1746,7 +1805,7 @@ Your transactions for ${formatDate(
                 type="number"
                 min="0"
                 step="0.01"
-                placeholder="9,000"
+                placeholder="0"
                 value={
                   savedMoneyInput
                 }
@@ -1760,13 +1819,13 @@ Your transactions for ${formatDate(
             </div>
 
             <p className="input-description">
-              Set your current total savings.
-              Daily savings will automatically
-              be added when you update today's
-              totals.
+              Manual savings amount.
+              Completed daily savings are
+              added automatically.
             </p>
 
           </div>
+
 
           <div className="day-action-buttons">
 
@@ -1787,12 +1846,13 @@ Your transactions for ${formatDate(
                 resetTotalSavedMoney
               }
             >
-              Reset Total Savings
+              Reset Saved Money
             </button>
 
           </div>
 
         </div>
+
 
         {/* =================================================
             WORK / SCHOOL DAYS
@@ -1812,6 +1872,7 @@ Your transactions for ${formatDate(
             </p>
 
           </div>
+
 
           <div className="budget-period-buttons">
 
@@ -1841,6 +1902,7 @@ Your transactions for ${formatDate(
 
           </div>
 
+
           <div className="work-days-summary">
 
             <span>
@@ -1854,6 +1916,7 @@ Your transactions for ${formatDate(
             </strong>
 
           </div>
+
 
           <div className="work-days-progress">
 
@@ -1872,11 +1935,13 @@ Your transactions for ${formatDate(
 
         </div>
 
+
         {message && (
           <p className="budget-message">
             {message}
           </p>
         )}
+
 
         {/* =================================================
             BUDGET STATISTICS
@@ -1898,6 +1963,7 @@ Your transactions for ${formatDate(
 
           </div>
 
+
           <div>
 
             <span>
@@ -1911,6 +1977,7 @@ Your transactions for ${formatDate(
             </strong>
 
           </div>
+
 
           <div>
 
@@ -1931,6 +1998,7 @@ Your transactions for ${formatDate(
             </strong>
 
           </div>
+
 
           <div>
 
@@ -1953,6 +2021,7 @@ Your transactions for ${formatDate(
           </div>
 
         </div>
+
 
         {/* =================================================
             USAGE
@@ -1989,6 +2058,7 @@ Your transactions for ${formatDate(
 
           </div>
 
+
           <div className="budget-progress-track">
 
             <div
@@ -2005,6 +2075,7 @@ Your transactions for ${formatDate(
 
           </div>
 
+
           {remainingToday < 0 && (
             <p className="budget-warning">
               You have exceeded today's
@@ -2020,6 +2091,7 @@ Your transactions for ${formatDate(
 
         </div>
 
+
         {/* =================================================
             DAY ACTIONS
         ================================================= */}
@@ -2034,11 +2106,12 @@ Your transactions for ${formatDate(
 
             <p>
               {dayHasBeenApplied
-                ? "Today's activity has already been saved. You can update it as many times as needed."
+                ? "Today's activity has already been saved. You can update it without creating a duplicate."
                 : "Save today's activity to your daily history before ending the day."}
             </p>
 
           </div>
+
 
           <div className="day-action-buttons">
 
@@ -2052,6 +2125,7 @@ Your transactions for ${formatDate(
                 : "Apply Today's Activity"}
             </button>
 
+
             <button
               type="button"
               className="secondary-button"
@@ -2064,7 +2138,39 @@ Your transactions for ${formatDate(
 
         </div>
 
+
+        {/* =================================================
+            RESET ALL DATA
+        ================================================= */}
+
+        <div className="danger-zone">
+
+          <div>
+
+            <strong>
+              Reset Everything
+            </strong>
+
+            <p>
+              Permanently delete all budgets,
+              savings, expenses, transactions,
+              daily history, and tracker settings.
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            className="reset-all-button"
+            onClick={resetAllData}
+          >
+            Reset All Data
+          </button>
+
+        </div>
+
       </section>
+
 
       {/* =================================================
           DAILY HISTORY
@@ -2088,6 +2194,7 @@ Your transactions for ${formatDate(
           </div>
 
         </div>
+
 
         {sortedDailyRecords.length === 0 ? (
 
@@ -2132,6 +2239,7 @@ Your transactions for ${formatDate(
 
                   </div>
 
+
                   <div className="history-values">
 
                     <div>
@@ -2148,6 +2256,7 @@ Your transactions for ${formatDate(
 
                     </div>
 
+
                     <div>
 
                       <span>
@@ -2161,6 +2270,7 @@ Your transactions for ${formatDate(
                       </strong>
 
                     </div>
+
 
                     <div>
 
@@ -2196,6 +2306,7 @@ Your transactions for ${formatDate(
 
       </section>
 
+
       {/* =================================================
           TRANSACTIONS
       ================================================= */}
@@ -2217,6 +2328,7 @@ Your transactions for ${formatDate(
 
           </div>
 
+
           <Link
             to="/add"
             className="primary-button"
@@ -2225,6 +2337,7 @@ Your transactions for ${formatDate(
           </Link>
 
         </div>
+
 
         {/* =================================================
             FILTERS
@@ -2272,6 +2385,7 @@ Your transactions for ${formatDate(
 
           </div>
 
+
           <div className="filter-group">
 
             <label>
@@ -2306,6 +2420,7 @@ Your transactions for ${formatDate(
           </div>
 
         </div>
+
 
         {/* =================================================
             TRANSACTION CARDS
@@ -2374,6 +2489,7 @@ Your transactions for ${formatDate(
 
                     </div>
 
+
                     <div className="transaction-amount">
 
                       <span
@@ -2394,6 +2510,7 @@ Your transactions for ${formatDate(
                       </span>
 
                     </div>
+
 
                     <div className="transaction-details">
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import {
   Link,
   useNavigate,
@@ -20,42 +21,136 @@ const categories = [
   "Other",
 ];
 
-const SCROLL_POSITION_STORAGE_KEY =
-  "budget-dashboard-scroll-position";
+const ACTIVE_DATE_STORAGE_KEY =
+  "budget-active-date";
+
+/* =====================================================
+   DATE
+===================================================== */
+
+function getLocalDate() {
+  const date = new Date();
+
+  const year =
+    date.getFullYear();
+
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getActiveDate() {
+  try {
+    const saved =
+      localStorage.getItem(
+        ACTIVE_DATE_STORAGE_KEY
+      );
+
+    return saved || getLocalDate();
+  } catch {
+    return getLocalDate();
+  }
+}
+
+/* =====================================================
+   COMPONENT
+===================================================== */
 
 function AddTransaction() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const navigate =
+    useNavigate();
 
-  const { addTransaction } = useTransactions();
+  const [searchParams] =
+    useSearchParams();
 
-  const [type, setType] = useState(
-    searchParams.get("type") === "Income"
-      ? "Income"
-      : "Expense"
-  );
+  const {
+    addTransaction,
+  } = useTransactions();
 
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [date, setDate] = useState("");
-  const [description, setDescription] = useState("");
-  const [error, setError] = useState("");
+  /* ===================================================
+     TYPE
+  =================================================== */
+
+  const [type, setType] =
+    useState(() =>
+      searchParams.get("type") ===
+      "Income"
+        ? "Income"
+        : "Expense"
+    );
+
+  /* ===================================================
+     FORM
+  =================================================== */
+
+  const [title, setTitle] =
+    useState("");
+
+  const [amount, setAmount] =
+    useState("");
+
+  const [category, setCategory] =
+    useState("");
+
+  /*
+    IMPORTANT:
+    Automatically use the date currently
+    being tracked by Dashboard.
+  */
+  const [date, setDate] =
+    useState(() =>
+      getActiveDate()
+    );
+
+  const [description, setDescription] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
+
+  /* ===================================================
+     URL TYPE
+  =================================================== */
 
   useEffect(() => {
-    const urlType = searchParams.get("type");
+    const urlType =
+      searchParams.get("type");
 
-    if (urlType === "Income") {
+    if (
+      urlType === "Income"
+    ) {
       setType("Income");
-    } else if (urlType === "Expense") {
+    }
+
+    if (
+      urlType === "Expense"
+    ) {
       setType("Expense");
     }
   }, [searchParams]);
 
-  const handleSubmit = (event) => {
+  /* ===================================================
+     SUBMIT
+  =================================================== */
+
+  const handleSubmit = (
+    event
+  ) => {
     event.preventDefault();
 
     setError("");
+
+    /* -----------------------------------------------
+       VALIDATION
+    ------------------------------------------------ */
 
     if (
       !title.trim() ||
@@ -70,7 +165,15 @@ function AddTransaction() {
       return;
     }
 
-    if (Number(amount) <= 0) {
+    const numericAmount =
+      Number(amount);
+
+    if (
+      !Number.isFinite(
+        numericAmount
+      ) ||
+      numericAmount <= 0
+    ) {
       setError(
         "Amount must be greater than zero."
       );
@@ -78,38 +181,58 @@ function AddTransaction() {
       return;
     }
 
+    /* -----------------------------------------------
+       CREATE TRANSACTION
+    ------------------------------------------------ */
+
     const newTransaction = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      amount: Number(amount),
+      id:
+        `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}`,
+
+      title:
+        title.trim(),
+
+      amount:
+        numericAmount,
+
       category,
+
+      /*
+        YYYY-MM-DD
+
+        This MUST match Dashboard's
+        activeDate format.
+      */
       date,
-      description: description.trim(),
+
+      description:
+        description.trim(),
+
       type,
     };
 
-    /*
-      Keep the dashboard's current scroll position.
+    /* -----------------------------------------------
+       SAVE
+    ------------------------------------------------ */
 
-      This allows the dashboard to restore the exact
-      area where the user was before opening this page.
-    */
-    const currentScrollPosition = {
-      x: window.scrollX,
-      y: window.scrollY,
-    };
-
-    sessionStorage.setItem(
-      SCROLL_POSITION_STORAGE_KEY,
-      JSON.stringify(
-        currentScrollPosition
-      )
+    addTransaction(
+      newTransaction
     );
 
-    addTransaction(newTransaction);
+    /*
+      Go back to Dashboard.
 
+      Dashboard will receive the transaction
+      update through the shared event.
+    */
     navigate("/");
   };
+
+  /* ===================================================
+     RENDER
+  =================================================== */
 
   return (
     <div className="page-card add-page">
@@ -127,14 +250,17 @@ function AddTransaction() {
           </h1>
 
           <p className="page-description">
-            Quickly record your income or expenses.
+            Quickly record your income or
+            expenses.
           </p>
 
         </div>
 
       </div>
 
-      {/* Transaction Type */}
+      {/* =================================================
+          TYPE
+      ================================================= */}
 
       <div className="transaction-type-selector">
 
@@ -145,8 +271,11 @@ function AddTransaction() {
               ? "selected"
               : ""
           }`}
-          onClick={() => setType("Income")}
+          onClick={() =>
+            setType("Income")
+          }
         >
+
           <strong>
             + Income
           </strong>
@@ -154,6 +283,7 @@ function AddTransaction() {
           <span>
             Money you received
           </span>
+
         </button>
 
         <button
@@ -163,8 +293,11 @@ function AddTransaction() {
               ? "selected"
               : ""
           }`}
-          onClick={() => setType("Expense")}
+          onClick={() =>
+            setType("Expense")
+          }
         >
+
           <strong>
             − Expense
           </strong>
@@ -172,11 +305,14 @@ function AddTransaction() {
           <span>
             Money you spent
           </span>
+
         </button>
 
       </div>
 
-      {/* Form */}
+      {/* =================================================
+          FORM
+      ================================================= */}
 
       <form
         className="transaction-form"
@@ -194,7 +330,9 @@ function AddTransaction() {
             placeholder="e.g. Lunch, Salary, Allowance"
             value={title}
             onChange={(event) =>
-              setTitle(event.target.value)
+              setTitle(
+                event.target.value
+              )
             }
           />
 
@@ -213,7 +351,9 @@ function AddTransaction() {
             placeholder="0.00"
             value={amount}
             onChange={(event) =>
-              setAmount(event.target.value)
+              setAmount(
+                event.target.value
+              )
             }
           />
 
@@ -228,7 +368,9 @@ function AddTransaction() {
           <select
             value={category}
             onChange={(event) =>
-              setCategory(event.target.value)
+              setCategory(
+                event.target.value
+              )
             }
           >
 
@@ -236,14 +378,16 @@ function AddTransaction() {
               Select a category
             </option>
 
-            {categories.map((item) => (
-              <option
-                key={item}
-                value={item}
-              >
-                {item}
-              </option>
-            ))}
+            {categories.map(
+              (item) => (
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {item}
+                </option>
+              )
+            )}
 
           </select>
 
@@ -259,7 +403,9 @@ function AddTransaction() {
             type="date"
             value={date}
             onChange={(event) =>
-              setDate(event.target.value)
+              setDate(
+                event.target.value
+              )
             }
           />
 
@@ -275,7 +421,9 @@ function AddTransaction() {
             placeholder="Optional description"
             value={description}
             onChange={(event) =>
-              setDescription(event.target.value)
+              setDescription(
+                event.target.value
+              )
             }
           />
 
@@ -287,7 +435,9 @@ function AddTransaction() {
           </p>
         )}
 
-        {/* Form Actions */}
+        {/* =================================================
+            ACTIONS
+        ================================================= */}
 
         <div className="form-actions">
 
